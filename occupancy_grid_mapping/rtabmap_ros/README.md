@@ -3,7 +3,7 @@ rtabmap_ros [![Build Status](https://travis-ci.org/introlab/rtabmap_ros.svg?bran
 
 RTAB-Map's ROS package.
 
-Инструкция по установке - ниже. Инструкция по запуску - в гугл доке https://docs.google.com/document/d/1CMNFhYlmfJb-XJJDk92J0y-mMTqQdyz_rtd2w-TJOmI/edit?usp=sharing.
+Инструкция по установке - ниже. Краткая инструкция по запуску - в гугл доке https://docs.google.com/document/d/1CMNFhYlmfJb-XJJDk92J0y-mMTqQdyz_rtd2w-TJOmI/edit?usp=sharing. Ниже есть ссылки на более подробные описания и инструкции.
 
 For more information, demos and tutorials about this package, visit [rtabmap_ros](http://wiki.ros.org/rtabmap_ros) page on ROS wiki.
 
