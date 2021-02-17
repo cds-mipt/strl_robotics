@@ -1,0 +1,19 @@
+<launch>
+    
+    <!-- Rtabmap stereo odometry -->
+    <node pkg="rtabmap_ros" type="stereo_odometry" name="stereo_odometry" output="screen">
+        <remap from="odom" to="/rtabmap_stereo_odom" />
+        
+        <remap from="left/image_rect" to="/zed_node/left/image_rect_color"/>
+        <remap from="left/camera_info" to="/zed_node/left/camera_info"/>
+        <remap from="right/image_rect" to="/zed_node/right/image_rect_color"/>
+        <remap from="right/camera_info" to="/zed_node/right/camera_info"/>
+        
+        <param name="approx_sync" value="true"/>
+        <param name="queue_size" value="10"/>
+        
+        <param name="frame_id" value="base_link"/>
+    </node>
+
+</launch>
+
