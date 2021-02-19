@@ -11,17 +11,21 @@
     <arg if="$(arg load_db)" name="rtabmap_args" value=""/>
     <arg unless="$(arg load_db)" name="rtabmap_args" value="--delete_db_on_start"/>
     
-    <!-- odom_name - odometry to use -->
-    <arg name="odom_name" default="openvslam"/>
-    <group if="$(eval odom_name == 'openvslam')">
+    <!-- db_path - path to database -->
+    <arg name="db_path" default="~/.ros/rtabmap.db"/>
+    
+    <!-- odom - odometry to use -->
+    <arg name="odom" default="openvslam"/>
+    <group if="$(eval odom == 'openvslam')">
         <!-- Custom node to convert OpenVSLAM odom from camera frame to base_link and publish dynamic transform from odom to base_link -->
         <node pkg="rtabmap_example" type="openvslam_odom_to_base_link.py" name="openvslam_odom_to_base_link" output="screen"/>
     </group>
-    <arg if="$(eval odom_name == 'openvslam')" name="odom_topic" value="/OpenVSLAM/odom_base_link"/>
-    <arg if="$(eval odom_name == 'rtabmap_stereo')" name="odom_topic" value="/rtabmap_stereo_odom"/>
+    <arg if="$(eval odom == 'openvslam')" name="odom_topic" value="/OpenVSLAM/odom_base_link"/>
+    <arg if="$(eval odom == 'rtabmap_stereo')" name="odom_topic" value="/rtabmap_stereo_odom"/>
 
     <!-- Rtabmap mapping -->
     <node pkg="rtabmap_ros" type="rtabmap" name="rtabmap" output="screen" args="$(arg rtabmap_args)">
+        <!-- remap топиков для чтения данных -->
         <remap from="odom" to="$(arg odom_topic)"/>
 
         <remap from="left/image_rect" to="/zed_node/left/image_rect_color"/>
@@ -35,17 +39,24 @@
         <remap from="rgb/camera_info" to="/zed_node/left/camera_info"/>
         <remap from="depth/image" to="/zed_node/depth/depth_registered"/>
         
+        <!-- remap сервисов (для rviz) -->
         <remap from="get_map_data" to="/rtabmap/get_map_data"/>
 
+        <!-- Данные, на которые подписывается rtabmap -->
         <param name="subscribe_stereo" value="false"/>
         <param name="subscribe_depth" value="true"/>
         <param name="subscribe_rgbd" value="false"/>
         <param name="subscribe_scan" value="false"/>
         <param name="subscribe_scan_cloud" value="true"/>
         
+        <!-- Путь к database -->
+        <param name="database_path" value="$(arg db_path)"/>
+        
+        <!-- Параметры синхронизации сообщений -->
         <param name="approx_sync" value="true"/>
         <param name="queue_size" value="10"/>
         
+        <!-- Параметры rtabmap -->
         <param name="Rtabmap/DetectionRate" value="100"/>
         <param name="Grid/RayTracing" value="true"/>
         <param name="Grid/FromDepth" value="false"/>
