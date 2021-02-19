@@ -1,0 +1,4 @@
+{
+  grid_topic: "occupancy",
+  raw_grid_topic: "grid_map",
+}
