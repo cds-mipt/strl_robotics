@@ -33,10 +33,12 @@ def draw_occupancy_grid(occ_grid, frame=None):
     return image, k
     
     
-def get_robot_world_pose():
+def get_robot_world_pose(desired_time=None):
     global tfBuffer
+    if desired_time is None:
+        desired_time = rospy.Time(0)
     try:
-        map_to_base_link = tfBuffer.lookup_transform('map', 'base_link', rospy.Time(), rospy.Duration(1.0))
+        map_to_base_link = tfBuffer.lookup_transform('map', 'base_link', desired_time, rospy.Duration(1.0))
     except:
         print('Could not find transform from map to base_link')
         return None
@@ -98,12 +100,13 @@ def process_occupancy_grid(occ_grid):
     global bridge
     global pub
     image, k = draw_occupancy_grid(occ_grid, frame=(1500, 1000))
-    robot_world_pose = get_robot_world_pose()
+    robot_world_pose = get_robot_world_pose(desired_time=occ_grid.header.stamp)
     if robot_world_pose is None:
         return()
     robor_occ_grid_pose = transform_world_pose_to_occupancy_grid_pose(robot_world_pose, occ_grid.info)
     draw_pose(image, k, robor_occ_grid_pose, occ_grid.info)
     image_message = bridge.cv2_to_imgmsg(image, encoding="passthrough")
+    image_message.header.stamp = occ_grid.header.stamp
     pub.publish(image_message)
 
 
