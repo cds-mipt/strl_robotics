@@ -1,0 +1,14 @@
+<launch>
+  
+  <node pkg="tf2_ros" type="static_transform_publisher" name="odom2lidar_odom" args="0 0 0 0 0 0 1 odom lidar_odom" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="zed_left_camera_optical_frame_to_velodyne"
+        args="5.214154202176700392e-02 -1.846812214940576902e-01 -4.561479952008089256e-02 -3.046857448372968236e+00 -1.631619169438448314e+00 -1.657808369943630566e+00
+        zed_left_camera_optical_frame velodyne"/>
+
+  <node pkg="robot_localization" type="ukf_localization_node" name="odometry_fusion" clear_params="true">
+    <rosparam command="load" file="$(find robot_localization)/params/husky_mipt_odometry_fusion.yaml" />
+    <remap from="odometry/filtered" to="/fused_odom"/>
+  </node>
+
+  <include file="$(find tf_transformer)/launch/odometry_transformer.launch" />
+</launch>

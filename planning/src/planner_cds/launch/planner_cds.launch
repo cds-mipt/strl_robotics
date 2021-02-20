@@ -1,0 +1,8 @@
+<launch>
+
+
+
+    <rosparam command="load" file="$(dirname)/../Config/node_config.yaml" ns = "node_params"/>
+
+    <node pkg="planner_cds" name="planner_cds" type="planner_cds" output="screen"/>
+</launch>

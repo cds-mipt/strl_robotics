@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="tf_transformer" type="odometry_transformer" name="visual_odometry_transformer" output="screen">
+    	<param name="in_topic" value="/OpenVSLAM/odom" />
+    	<param name="out_topic" value="/visual_odom" />
+        <param name="from_frame" value="zed_left_camera_optical_frame" />
+        <param name="to_frame" value="base_link" />
+        <param name="reset_odom" value="true" />
+        <param name="covariance" type="yaml" value="[0.005, 0, 0, 0, 0, 0, 0, 0.005, 0, 0, 0, 0, 0, 0, 0.015, 0, 0, 0, 0, 0, 0, 0.0002, 0, 0, 0, 0, 0, 0, 0.0002, 0, 0, 0, 0, 0, 0, 0.00005]" />
+    </node>
+
+    <node pkg="tf_transformer" type="odometry_transformer" name="lidar_odometry_transformer" output="screen">
+    	<param name="in_topic" value="/odom_aft_mapped" />
+    	<param name="out_topic" value="/lidar_odom" />
+        <param name="from_frame" value="velodyne" />
+        <param name="to_frame" value="base_link" />
+        <param name="reset_odom" value="true" />
+        <param name="covariance" type="yaml" value="[0.005, 0, 0, 0, 0, 0, 0, 0.005, 0, 0, 0, 0, 0, 0, 0.015, 0, 0, 0, 0, 0, 0, 0.0002, 0, 0, 0, 0, 0, 0, 0.0002, 0, 0, 0, 0, 0, 0, 0.00005]" />
+    </node>
+</launch>
+
