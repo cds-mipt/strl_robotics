@@ -22,6 +22,7 @@
     </group>
     <arg if="$(eval odom == 'openvslam')" name="odom_topic" value="/OpenVSLAM/odom_base_link"/>
     <arg if="$(eval odom == 'rtabmap_stereo')" name="odom_topic" value="/rtabmap_stereo_odom"/>
+    <arg if="$(eval odom == 'rtabmap_rgbd')" name="odom_topic" value="/rtabmap_rgbd_odom"/>
 
     <!-- Rtabmap mapping -->
     <node pkg="rtabmap_ros" type="rtabmap" name="rtabmap" output="screen" args="$(arg rtabmap_args)">

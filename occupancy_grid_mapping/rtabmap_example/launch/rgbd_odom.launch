@@ -1,0 +1,18 @@
+<launch>
+    
+    <!-- Rtabmap rgbd odometry -->
+    <node pkg="rtabmap_ros" type="rgbd_odometry" name="rgbd_odometry" output="screen">
+        <remap from="odom" to="/rtabmap_rgbd_odom" />
+        
+        <remap from="rgb/image" to="/zed_node/left/image_rect_color"/>
+        <remap from="rgb/camera_info" to="/zed_node/left/camera_info"/>
+        <remap from="depth/image" to="/zed_node/depth/depth_registered"/>
+        
+        <param name="approx_sync" value="true"/>
+        <param name="queue_size" value="10"/>
+        
+        <param name="frame_id" value="base_link"/>
+    </node>
+
+</launch>
+
