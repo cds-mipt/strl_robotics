@@ -8,7 +8,7 @@
     <node pkg="rtabmap_example" type="openvslam_odom_to_base_link_with_drift.py" name="openvslam_odom_to_base_link_with_drift" output="screen"/>
 
     <!-- Rtabmap mapping -->
-    <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start">
+    <node pkg="rtabmap_ros" type="rtabmap" name="rtabmap" ns="rtabmap" output="screen" args="--delete_db_on_start">
         <remap from="odom" to="/OpenVSLAM/odom_base_link_with_drift"/>
 
         <remap from="left/image_rect" to="/zed_node/left/image_rect_color"/>
@@ -21,8 +21,6 @@
         <remap from="rgb/image" to="/zed_node/left/image_rect_color"/>
         <remap from="rgb/camera_info" to="/zed_node/left/camera_info"/>
         <remap from="depth/image" to="/zed_node/depth/depth_registered"/>
-        
-        <remap from="get_map_data" to="/rtabmap/get_map_data"/>
 
         <param name="subscribe_stereo" value="false"/>
         <param name="subscribe_depth" value="true"/>

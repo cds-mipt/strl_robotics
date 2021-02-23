@@ -227,7 +227,7 @@ Visualization Manager:
       Draw Behind: false
       Enabled: true
       Name: Map
-      Topic: /grid_map
+      Topic: /rtabmap/grid_map
       Unreliable: false
       Use Timestamp: false
       Value: true
@@ -265,7 +265,7 @@ Visualization Manager:
       Size (Pixels): 2
       Size (m): 0.009999999776482582
       Style: Points
-      Topic: /mapData
+      Topic: /rtabmap/mapData
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -285,7 +285,7 @@ Visualization Manager:
       Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 139
+      Max Intensity: 255
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: PointCloud2
@@ -328,7 +328,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 9.723410606384277
+      Distance: 11.298328399658203
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -336,17 +336,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.9951999187469482
-        Y: 3.493495464324951
-        Z: 2.384185791015625e-06
+        X: -1.5495147705078125
+        Y: 3.4719488620758057
+        Z: 3.5762786865234375e-06
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7353988885879517
+      Pitch: 0.7203988432884216
       Target Frame: ""
-      Yaw: 1.3767468929290771
+      Yaw: 2.801741361618042
     Saved: ~
 Window Geometry:
   Displays:

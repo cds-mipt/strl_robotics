@@ -16,16 +16,13 @@
     
     <!-- odom - odometry to use -->
     <arg name="odom" default="openvslam"/>
-    <group if="$(eval odom == 'openvslam')">
-        <!-- Custom node to convert OpenVSLAM odom from camera frame to base_link and publish dynamic transform from odom to base_link -->
-        <node pkg="rtabmap_example" type="openvslam_odom_to_base_link.py" name="openvslam_odom_to_base_link" output="screen"/>
-    </group>
+    <!-- Custom node to convert OpenVSLAM odom from camera frame to base_link and publish dynamic transform from odom to base_link -->
+    <node if="$(eval odom == 'openvslam')" pkg="rtabmap_example" type="openvslam_odom_to_base_link.py" name="openvslam_odom_to_base_link" output="screen"/>
     <arg if="$(eval odom == 'openvslam')" name="odom_topic" value="/OpenVSLAM/odom_base_link"/>
-    <arg if="$(eval odom == 'rtabmap_stereo')" name="odom_topic" value="/rtabmap_stereo_odom"/>
-    <arg if="$(eval odom == 'rtabmap_rgbd')" name="odom_topic" value="/rtabmap_rgbd_odom"/>
+    <arg if="$(eval odom == 'rtabmap')" name="odom_topic" value="odom"/>
 
     <!-- Rtabmap mapping -->
-    <node pkg="rtabmap_ros" type="rtabmap" name="rtabmap" output="screen" args="$(arg rtabmap_args)">
+    <node pkg="rtabmap_ros" type="rtabmap" name="rtabmap" ns="rtabmap" output="screen" args="$(arg rtabmap_args)">
         <!-- remap топиков для чтения данных -->
         <remap from="odom" to="$(arg odom_topic)"/>
 
@@ -39,9 +36,6 @@
         <remap from="rgb/image" to="/zed_node/left/image_rect_color"/>
         <remap from="rgb/camera_info" to="/zed_node/left/camera_info"/>
         <remap from="depth/image" to="/zed_node/depth/depth_registered"/>
-        
-        <!-- remap сервисов (для rviz) -->
-        <remap from="get_map_data" to="/rtabmap/get_map_data"/>
 
         <!-- Данные, на которые подписывается rtabmap -->
         <param name="subscribe_stereo" value="false"/>

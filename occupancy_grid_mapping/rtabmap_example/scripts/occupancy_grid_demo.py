@@ -115,7 +115,7 @@ if __name__ == '__main__':
     tfBuffer = tf2_ros.Buffer()
     tfListener = tf2_ros.TransformListener(tfBuffer)
     bridge = CvBridge()
-    rospy.Subscriber('/grid_map', OccupancyGrid, process_occupancy_grid)
+    rospy.Subscriber('/rtabmap/grid_map', OccupancyGrid, process_occupancy_grid)
     pub = rospy.Publisher('/occupancy_grid_demo', Image, queue_size=10)
     rospy.spin()
 
