@@ -167,6 +167,45 @@ void CommonDataSubscriber::depthOdomScan3dCallback(
 		const sensor_msgs::CameraInfoConstPtr& cameraInfoMsg,
 		const sensor_msgs::PointCloud2ConstPtr& scanMsg)
 {
+/*
+	static const char* file_name = "/home/cds-jetson-host/rtabmap/latency_error.txt";
+	static const int buffer_size = 100;
+	static int counter = 0;
+	static float imageError_msec[buffer_size];
+	static float depthError_msec[buffer_size];
+	static float cameraInfoError_msec[buffer_size];
+	static float scanError_msec[buffer_size];
+
+	ros::Time odomTime = odomMsg->header.stamp;
+	ros::Time imageTime = imageMsg->header.stamp;
+	ros::Time depthTime = depthMsg->header.stamp;
+	ros::Time cameraInfoTime = cameraInfoMsg->header.stamp;
+	ros::Time scanTime = scanMsg->header.stamp;
+	
+	ros::Duration imageError = imageTime - odomTime;
+	ros::Duration depthError = depthTime - odomTime;
+	ros::Duration cameraInfoError = cameraInfoTime - odomTime;
+	ros::Duration scanError = scanTime - odomTime;
+	
+	imageError_msec[counter] = imageError.toSec() * 1000;
+	depthError_msec[counter] = depthError.toSec() * 1000;
+	cameraInfoError_msec[counter] = cameraInfoError.toSec() * 1000;
+	scanError_msec[counter] = scanError.toSec() * 1000;
+	
+	counter++;
+	if (counter == buffer_size)
+	{
+		std::fstream fs;
+		fs.open(file_name, std::fstream::app);
+		for (int i = 0; i < buffer_size; i++)
+		{
+			fs << imageError_msec[i] << ' ' << depthError_msec[i] << ' ' << cameraInfoError_msec[i] << ' ' << scanError_msec[i] << std::endl;
+		}
+		fs.close();
+		counter = 0;
+	}
+*/
+
 	rtabmap_ros::UserDataConstPtr userDataMsg; // Null
 	sensor_msgs::LaserScan scan2dMsg; // Null
 	rtabmap_ros::OdomInfoConstPtr odomInfoMsg; // null

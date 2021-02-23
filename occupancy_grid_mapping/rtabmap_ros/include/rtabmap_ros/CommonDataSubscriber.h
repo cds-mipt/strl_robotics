@@ -53,6 +53,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/thread.hpp>
 
+#include <fstream>
+
 namespace rtabmap_ros {
 
 class CommonDataSubscriber {

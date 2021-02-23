@@ -119,8 +119,10 @@ CoreWrapper::CoreWrapper() :
 		odomSensorSync_(false),
 		rate_(Parameters::defaultRtabmapDetectionRate()),
 		createIntermediateNodes_(Parameters::defaultRtabmapCreateIntermediateNodes()),
-		maxMappingNodes_(Parameters::defaultGridGlobalMaxNodes()),
+		mappingMaxNodes_(Parameters::defaultGridGlobalMaxNodes()),
+		mappingAltitudeDelta_(Parameters::defaultGridGlobalAltitudeDelta()),
 		alreadyRectifiedImages_(Parameters::defaultRtabmapImagesAlreadyRectified()),
+		twoDMapping_(Parameters::defaultRegForce3DoF()),
 		previousStamp_(0),
 		mbClient_(0)
 {
@@ -571,15 +573,27 @@ void CoreWrapper::onInit()
 	}
 	if(parameters_.find(Parameters::kGridGlobalMaxNodes()) != parameters_.end())
 	{
-		Parameters::parse(parameters_, Parameters::kGridGlobalMaxNodes(), maxMappingNodes_);
-		if(maxMappingNodes_>0)
+		Parameters::parse(parameters_, Parameters::kGridGlobalMaxNodes(), mappingMaxNodes_);
+		if(mappingMaxNodes_>0)
 		{
-			NODELET_INFO("Max mapping nodes = %d", maxMappingNodes_);
+			NODELET_INFO("Max mapping nodes = %d", mappingMaxNodes_);
+		}
+	}
+	if(parameters_.find(Parameters::kGridGlobalAltitudeDelta()) != parameters_.end())
+	{
+		Parameters::parse(parameters_, Parameters::kGridGlobalAltitudeDelta(), mappingAltitudeDelta_);
+		if(mappingAltitudeDelta_>0.0)
+		{
+			NODELET_INFO("Mapping altitude delta = %f", mappingAltitudeDelta_);
 		}
 	}
 	if(parameters_.find(Parameters::kRtabmapImagesAlreadyRectified()) != parameters_.end())
 	{
 		Parameters::parse(parameters_, Parameters::kRtabmapImagesAlreadyRectified(), alreadyRectifiedImages_);
+	}
+	if(parameters_.find(Parameters::kRegForce3DoF()) != parameters_.end())
+	{
+		Parameters::parse(parameters_, Parameters::kRegForce3DoF(), twoDMapping_);
 	}
 
 	if(paused_)
@@ -1227,7 +1241,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 				genScanMaxDepth_,
 				genScanMinDepth_);
 		genMaxScanPts += depth.cols;
-		scan = LaserScan(rtabmap::util3d::laserScan2dFromPointCloud(*scanCloud2d), 0, genScanMaxDepth_, LaserScan::kXY);
+		scan = LaserScan(rtabmap::util3d::laserScan2dFromPointCloud(*scanCloud2d), 0, genScanMaxDepth_);
 	}
 	else if(!scan2dMsg.ranges.empty())
 	{
@@ -1262,7 +1276,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 			return;
 		}
 
-		ROS_WARN("%d %d %d %d", rgb.empty()?1:0, depth.empty()?1:0, scan.isEmpty()?1:0, genDepth_?1:0);
+		ROS_DEBUG("%d %d %d %d", rgb.empty()?1:0, depth.empty()?1:0, scan.isEmpty()?1:0, genDepth_?1:0);
 		if(!rgb.empty() && depth.empty() && !scan.isEmpty() && genDepth_)
 		{
 			for(size_t i=0; i<cameraModels.size(); ++i)
@@ -1285,13 +1299,20 @@ void CoreWrapper::commonDepthCallbackImpl(
 					}
 				}
 
-				cv::Mat depthProjected = rtabmap::util3d::projectCloudToCamera(model.imageSize(), model.K(), scan.data(), model.localTransform());
+				cv::Mat depthProjected = util3d::projectCloudToCamera(
+						model.imageSize(),
+						model.K(),
+						scan.data(),
+						scan.localTransform().inverse()*model.localTransform());
 
 				if(genDepthFillHolesSize_ > 0 && genDepthFillIterations_ > 0)
 				{
 					for(int i=0; i<genDepthFillIterations_;++i)
 					{
-						depthProjected = rtabmap::util2d::fillDepthHoles(depthProjected, genDepthFillHolesSize_, genDepthFillHolesError_);
+						depthProjected = util2d::fillDepthHoles(
+								depthProjected,
+								genDepthFillHolesSize_,
+								genDepthFillHolesError_);
 					}
 				}
 
@@ -1712,22 +1733,11 @@ void CoreWrapper::commonLaserScanCallback(
 		userData_ = cv::Mat();
 	}
 
-	cv::Mat rgb = cv::Mat::zeros(3,4,CV_8UC1);
-	cv::Mat depth = cv::Mat::zeros(3,4,CV_16UC1);
-	CameraModel model(
-			2,
-			2,
-			2,
-			1.5,
-			scan.localTransform()*Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0),
-			0,
-			cv::Size(4,3));
-
 	SensorData data(
 			scan,
-			rgb,
-			depth,
-			model,
+			cv::Mat(),
+			cv::Mat(),
+			CameraModel(),
 			lastPoseIntermediate_?-1:!scan2dMsg.ranges.empty()?scan2dMsg.header.seq:scan3dMsg.header.seq,
 			rtabmap_ros::timestampFromROS(lastPoseStamp_),
 			userData);
@@ -1787,21 +1797,10 @@ void CoreWrapper::commonOdomCallback(
 		userData_ = cv::Mat();
 	}
 
-	cv::Mat rgb = cv::Mat::zeros(3,4,CV_8UC1);
-	cv::Mat depth = cv::Mat::zeros(3,4,CV_16UC1);
-	CameraModel model(
-			2,
-			2,
-			2,
-			1.5,
-			Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0),
-			0,
-			cv::Size(4,3));
-
 	SensorData data(
-			rgb,
-			depth,
-			model,
+			cv::Mat(),
+			cv::Mat(),
+			CameraModel(),
 			lastPoseIntermediate_?-1:odomMsg->header.seq,
 			rtabmap_ros::timestampFromROS(lastPoseStamp_),
 			userData);
@@ -1871,18 +1870,15 @@ void CoreWrapper::process(
 							covariance.at<double>(5,5) = odomDefaultAngVariance_;
 						}
 					}
+					else if(twoDMapping_)
+					{
+						// If 2d mapping, make sure all diagonal values of the covariance that even not used are not null.
+						covariance.at<double>(2,2) = covariance.at<double>(2,2)!=0?covariance.at<double>(2,2):1;
+						covariance.at<double>(3,3) = covariance.at<double>(3,3)!=0?covariance.at<double>(3,3):1;
+						covariance.at<double>(4,4) = covariance.at<double>(4,4)!=0?covariance.at<double>(4,4):1;
+					}
 
-					cv::Mat rgb = cv::Mat::zeros(3,4,CV_8UC1);
-					cv::Mat depth = cv::Mat::zeros(3,4,CV_16UC1);
-					CameraModel model(
-							2,
-							2,
-							2,
-							1.5,
-							Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0),
-							0,
-							cv::Size(4,3));
-					SensorData interData(rgb, depth, model, -1, rtabmap_ros::timestampFromROS(iter->first.header.stamp));
+					SensorData interData(cv::Mat(), cv::Mat(), CameraModel(), -1, rtabmap_ros::timestampFromROS(iter->first.header.stamp));
 					Transform gt;
 					if(!groundTruthFrameId_.empty())
 					{
@@ -2050,6 +2046,13 @@ void CoreWrapper::process(
 				covariance.at<double>(5,5) = odomDefaultAngVariance_;
 			}
 		}
+		else if(twoDMapping_)
+		{
+			// If 2d mapping, make sure all diagonal values of the covariance that even not used are not null.
+			covariance.at<double>(2,2) = covariance.at<double>(2,2)!=0?covariance.at<double>(2,2):1;
+			covariance.at<double>(3,3) = covariance.at<double>(3,3)!=0?covariance.at<double>(3,3):1;
+			covariance.at<double>(4,4) = covariance.at<double>(4,4)!=0?covariance.at<double>(4,4):1;
+		}
 
 		std::map<std::string, float> externalStats;
 		std::vector<float> odomVelocity;
@@ -2121,18 +2124,10 @@ void CoreWrapper::process(
 					filteredPoses.insert(std::make_pair(0, mapToOdom_*odom));
 				}
 
-				if(maxMappingNodes_ > 0 && filteredPoses.size()>1)
+				if((mappingMaxNodes_ > 0 || mappingAltitudeDelta_>0.0) && filteredPoses.size()>1)
 				{
-					std::map<int, Transform> nearestPoses;
-					std::map<int, float> nodes = graph::findNearestNodes(filteredPoses, mapToOdom_*odom, maxMappingNodes_);
-					for(std::map<int, float>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
-					{
-						std::map<int, Transform>::iterator pter = filteredPoses.find(iter->first);
-						if(pter != filteredPoses.end())
-						{
-							nearestPoses.insert(*pter);
-						}
-					}
+					std::map<int, Transform> nearestPoses = filterNodesToAssemble(filteredPoses, mapToOdom_*odom);
+
 					//add latest/zero and make sure those on a planned path are not filtered
 					std::set<int> onPath;
 					if(rtabmap_.getPath().size())
@@ -2287,6 +2282,36 @@ void CoreWrapper::process(
 				 "when you need to have IDs output of RTAB-map synchronized with the source "
 				 "image sequence ID.");
 	}
+}
+
+std::map<int, Transform> CoreWrapper::filterNodesToAssemble(
+		const std::map<int, Transform> & nodes,
+		const Transform & currentPose)
+{
+	std::map<int, Transform> output;
+	if(mappingMaxNodes_ > 0)
+	{
+		std::map<int, float> nodesDist = graph::findNearestNodes(nodes, currentPose, mappingMaxNodes_);
+		for(std::map<int, float>::iterator iter=nodesDist.begin(); iter!=nodesDist.end(); ++iter)
+		{
+			if(mappingAltitudeDelta_<=0.0 ||
+			   fabs(nodes.at(iter->first).z()-currentPose.z())<mappingAltitudeDelta_)
+			{
+				output.insert(*nodes.find(iter->first));
+			}
+		}
+	}
+	else // mappingAltitudeDelta_>0.0
+	{
+		for(std::map<int, Transform>::const_iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
+		{
+			if(fabs(iter->second.z()-currentPose.z())<mappingAltitudeDelta_)
+			{
+				output.insert(*iter);
+			}
+		}
+	}
+	return output;
 }
 
 void CoreWrapper::userDataAsyncCallback(const rtabmap_ros::UserDataConstPtr & dataMsg)
@@ -2676,6 +2701,31 @@ bool CoreWrapper::updateRtabmapCallback(std_srvs::Empty::Request&, std_srvs::Emp
 	{
 		rate_ = uStr2Float(parameters_.at(Parameters::kRtabmapDetectionRate()));
 		NODELET_INFO("RTAB-Map rate detection = %f Hz", rate_);
+	}
+	if(parameters_.find(Parameters::kRtabmapCreateIntermediateNodes()) != parameters_.end())
+	{
+		createIntermediateNodes_ = uStr2Bool(parameters_.at(Parameters::kRtabmapCreateIntermediateNodes()));
+		NODELET_INFO("Create intermediate nodes = %s", createIntermediateNodes_?"true":"false");
+	}
+	if(parameters_.find(Parameters::kGridGlobalMaxNodes()) != parameters_.end())
+	{
+		mappingMaxNodes_ = uStr2Int(parameters_.at(Parameters::kGridGlobalMaxNodes()));
+		NODELET_INFO("Max mapping nodes = %d", mappingMaxNodes_);
+	}
+	if(parameters_.find(Parameters::kGridGlobalAltitudeDelta()) != parameters_.end())
+	{
+		mappingAltitudeDelta_ = uStr2Float(parameters_.at(Parameters::kGridGlobalAltitudeDelta()));
+		NODELET_INFO("Mapping altitude delta = %f", mappingAltitudeDelta_);
+	}
+	if(parameters_.find(Parameters::kRtabmapImagesAlreadyRectified()) != parameters_.end())
+	{
+		alreadyRectifiedImages_ = uStr2Bool(parameters_.at(Parameters::kRtabmapImagesAlreadyRectified()));
+		NODELET_INFO("Already rectified images = %s", alreadyRectifiedImages_?"true":"false");
+	}
+	if(parameters_.find(Parameters::kRegForce3DoF()) != parameters_.end())
+	{
+		twoDMapping_= uStr2Bool(parameters_.at(Parameters::kRegForce3DoF()));
+		NODELET_INFO("2D mapping = %s", twoDMapping_?"true":"false");
 	}
 	rtabmap_.parseParameters(parameters_);
 	mapsManager_.setParameters(parameters_);
@@ -3151,18 +3201,9 @@ bool CoreWrapper::publishMapCallback(rtabmap_ros::PublishMap::Request& req, rtab
 			if(mapsManager_.hasSubscribers())
 			{
 				std::map<int, Transform> filteredPoses(poses.lower_bound(1), poses.end());
-				if(maxMappingNodes_ > 0 && filteredPoses.size()>1)
+				if((mappingMaxNodes_ > 0 || mappingAltitudeDelta_>0.0) && filteredPoses.size()>1)
 				{
-					std::map<int, Transform> nearestPoses;
-					std::map<int, float> nodes = graph::findNearestNodes(filteredPoses, filteredPoses.rbegin()->second, maxMappingNodes_);
-					for(std::map<int, float>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
-					{
-						std::map<int, Transform>::iterator pter = filteredPoses.find(iter->first);
-						if(pter != filteredPoses.end())
-						{
-							nearestPoses.insert(*pter);
-						}
-					}
+					std::map<int, Transform> nearestPoses = filterNodesToAssemble(filteredPoses, filteredPoses.rbegin()->second);
 				}
 				if(signatures.size())
 				{
@@ -4028,19 +4069,9 @@ bool CoreWrapper::octomapBinaryCallback(
 	res.map.header.stamp = ros::Time::now();
 
 	std::map<int, Transform> poses = rtabmap_.getLocalOptimizedPoses();
-	if(maxMappingNodes_ > 0 && poses.size()>1)
+	if((mappingMaxNodes_ > 0 || mappingAltitudeDelta_>0.0) && poses.size()>1)
 	{
-		std::map<int, Transform> nearestPoses;
-		std::map<int, float> nodes = graph::findNearestNodes(poses, poses.rbegin()->second, maxMappingNodes_);
-		for(std::map<int, float>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
-		{
-			std::map<int, Transform>::iterator pter = poses.find(iter->first);
-			if(pter != poses.end())
-			{
-				nearestPoses.insert(*pter);
-			}
-		}
-		poses = nearestPoses;
+		poses = filterNodesToAssemble(poses, poses.rbegin()->second);
 	}
 
 	mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true);
@@ -4059,19 +4090,9 @@ bool CoreWrapper::octomapFullCallback(
 	res.map.header.stamp = ros::Time::now();
 
 	std::map<int, Transform> poses = rtabmap_.getLocalOptimizedPoses();
-	if(maxMappingNodes_ > 0 && poses.size()>1)
+	if((mappingMaxNodes_ > 0 || mappingAltitudeDelta_>0.0) && poses.size()>1)
 	{
-		std::map<int, Transform> nearestPoses;
-		std::map<int, float> nodes = graph::findNearestNodes(poses, poses.rbegin()->second, maxMappingNodes_);
-		for(std::map<int, float>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
-		{
-			std::map<int, Transform>::iterator pter = poses.find(iter->first);
-			if(pter != poses.end())
-			{
-				nearestPoses.insert(*pter);
-			}
-		}
-		poses = nearestPoses;
+		poses = filterNodesToAssemble(poses, poses.rbegin()->second);
 	}
 
 	mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true);
