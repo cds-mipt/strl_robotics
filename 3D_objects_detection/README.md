@@ -7,7 +7,7 @@
     - применена полуавтоматическая разметка данных
     - яндекс толока?
     - данные выгружаются как датасеты в формате COCO v1.0 вида annotations/ images для каждой task
-    - c помощью скрипта produce_train_val_test.py из размеченных tasks формируется 3 датасета: для тренировки, валидации и теста 
+    - c помощью скрипта produce_train_val_test.py из размеченных tasks сформированы 3 датасета: для тренировки, валидации и теста 
     (данные находятся на cds-server /home/linok_sa/datasets/lift/single_dataset)
 
 2. Сегментация кнопок моделью [SOLOv2](https://github.com/WXinlong/SOLO).
