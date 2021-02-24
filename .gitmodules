@@ -1,0 +1,3 @@
+[submodule "odometry/visual_odometry/openvslam"]
+	path = odometry/visual_odometry/openvslam
+	url = https://gitlab.com/sdbcs-nio3/itl_mipt/slam/alg/openvslam.git
