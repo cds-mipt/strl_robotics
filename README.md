@@ -88,4 +88,3 @@ ros_pause: False\
 no_battery: True\
 current_limit: False\
 ```
----
