@@ -28,32 +28,32 @@ Occupancy grid в rtabmap представлена стандартными со
 ---
 **Пример вывода топика /status**
 
-header:
-  seq: 28287
-  stamp:
-    secs: 1614184608
-    nsecs: 173392658
-  frame_id: ''
-uptime: 28330379
-ros_control_loop_freq: 9.9974492508
-mcu_and_user_port_current: 0.82
-left_driver_current: 0.0
-right_driver_current: 0.0
-battery_voltage: 26.88
-left_driver_voltage: 0.0
-right_driver_voltage: 0.0
-left_driver_temp: 0.0
-right_driver_temp: 0.0
-left_motor_temp: 0.0
-right_motor_temp: 0.0
-capacity_estimate: 480
-charge_estimate: 1.0
-timeout: False
-lockout: True
-e_stop: True
-ros_pause: False
-no_battery: True
-current_limit: False
+header:\                              
+  seq: 28287\
+  stamp:\
+    secs: 1614184608\
+    nsecs: 173392658\
+  frame_id: ''\
+uptime: 28330379\
+ros_control_loop_freq: 9.9974492508\
+mcu_and_user_port_current: 0.82\
+left_driver_current: 0.0\
+right_driver_current: 0.0\
+battery_voltage: 26.88\
+left_driver_voltage: 0.0\
+right_driver_voltage: 0.0\
+left_driver_temp: 0.0\
+right_driver_temp: 0.0\
+left_motor_temp: 0.0\
+right_motor_temp: 0.0\
+capacity_estimate: 480\
+charge_estimate: 1.0\
+timeout: False\
+lockout: True\
+e_stop: True\
+ros_pause: False\
+no_battery: True\
+current_limit: False\
 
 ---
 
