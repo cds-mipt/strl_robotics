@@ -1,0 +1,29 @@
+services: 
+
+  lidar_odometry:
+    network_mode: host
+    build: ./lidar_odometry/a_lego_loam/docker
+    working_dir: /home/a_lego_loam/catkin_ws
+    volumes:
+      - ./lidar_odometry/a_lego_loam:/home/a_lego_loam/catkin_ws/src/a_lego_loam:rw
+      - ./lidar_odometry/start.sh:/home/a_lego_loam/catkin_ws/start.sh
+    entrypoint: /home/a_lego_loam/catkin_ws/start.sh
+
+  visual_odometry:
+    network_mode: host
+    build: ./visual_odometry/openvslam/docker
+    working_dir: /home/docker_openvslam/catkin_ws
+    volumes:
+      - ./visual_odometry/openvslam:/home/docker_openvslam/catkin_ws/src/openvslam:rw
+      - ./visual_odometry/start.sh:/home/docker_openvslam/catkin_ws/start.sh
+    entrypoint: /home/docker_openvslam/catkin_ws/start.sh
+
+  odometry_fusion:
+    network_mode: host
+    build: ./odometry_fusion/robot_localization/docker
+    working_dir: /home/odometry_fusion/catkin_ws
+    volumes:
+      - ./odometry_fusion/robot_localization:/home/odometry_fusion/catkin_ws/src/robot_localization:rw
+      - ./odometry_fusion/tf_transformer:/home/odometry_fusion/catkin_ws/src/tf_transformer:rw
+      - ./odometry_fusion/start.sh:/home/odometry_fusion/catkin_ws/start.sh
+    entrypoint: /home/odometry_fusion/catkin_ws/start.sh
