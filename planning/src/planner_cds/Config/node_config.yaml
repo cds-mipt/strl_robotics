@@ -1,8 +1,8 @@
 {
-  odom_topic: "odometry",
+  odom_topic: "fused_odom",
   task_topic: "move_base_simple/goal",
-  grid_topic: "occupancy/accumulated",
+  grid_topic: "grid_map",
   path_topic: "planning_node/trajectory",
   path_topic_vis: "path_visualization",
-  search_type: "astar"
+  search_type: "bfs"
 }

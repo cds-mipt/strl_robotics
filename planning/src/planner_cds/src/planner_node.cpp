@@ -35,13 +35,14 @@ private:
     ros::Publisher      trajPub;
     ros::Publisher      visTrajPub;
 
-    tf2_ros::Buffer&        tfBuffer;
-    nav_msgs::OccupancyGrid grid;
-    nav_msgs::Odometry      odom;
+    tf2_ros::Buffer&                tfBuffer;
+    nav_msgs::OccupancyGrid         grid;
+    nav_msgs::Odometry              odom;
     visualization_msgs::Marker      vis_path;
 
-    Map                     map;
-    Astar              search = Astar(1,1);
+    Map         map;
+    Astar       search = Astar(1,1);
+    ISearch*    search1;
 //    Mission mission;
 
     std::string odomTopic;
@@ -96,8 +97,8 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
     vis_path.pose.orientation.y = 0;
     vis_path.pose.orientation.z = 0;
     vis_path.pose.orientation.w = 1;
-    vis_path.scale.x = 0.2;
-    vis_path.scale.y = 0.2;
+    vis_path.scale.x = 0.05;
+    vis_path.scale.y = 0.05;
     vis_path.scale.z = 0;
     vis_path.color.r = 1;
     vis_path.color.g = 0;
@@ -134,27 +135,27 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
 
     visTrajPub                  = nh.advertise<visualization_msgs::Marker>      (pathTopicVis,
                                                                                  50);
-//
-//    if (search)
-//        delete search;
+
+//    if (search1)
+//        delete search1;
 //    if (searchType == "bfs")
-//        search = new BFS();
+//        search1 = new BFS();
 //    else if (searchType  == "dijkstra")
-//        search = new Dijkstra();
+//        search1 = new Dijkstra();
 //    else if (searchType  == "astar")
-//        search = new Astar(1, 1);
+//        search1 = new Astar(1, 1);
 //    else if (searchType  == "jp_search")
-//        search = new JP_Search(1, 1);
+//        search1 = new JP_Search(1, 1);
 //    else if (searchType  == "theta")
-//        search = new Theta(1, 1);
+//        search1 = new Theta(1, 1);
 }
 
 void Planner::setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg) {
     if(gridSet){
-        auto transformedPose = transformPoseToTargetFrame(goalMsg->pose, goalMsg->header.frame_id, grid.header.frame_id);
-        transformedPose = rescaleToGrid(transformedPose);
-        map.setGoal(int(transformedPose.position.x),
-                        int(transformedPose.position.y));
+        auto transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goalMsg->pose, goalMsg->header.frame_id, grid.header.frame_id));
+        ROS_INFO_STREAM("Transformed goal is:" << rescaleFromGrid(transformedGoal));
+        map.setGoal(int(transformedGoal.position.y),
+                        int(transformedGoal.position.x));
         if(!plan()) ROS_WARN_STREAM("Planning error! Resulted path is empty.");
         publish();
     }else{
@@ -175,18 +176,24 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
 void Planner::setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg) {
     this->odom = *odomMsg;
     if(gridSet){
-        auto transformedPose = transformPoseToTargetFrame(odomMsg->pose.pose, odomMsg->header.frame_id, grid.header.frame_id);\
-        transformedPose = rescaleToGrid(transformedPose);
-        map.setStart(int(transformedPose.position.x),
-                        int(transformedPose.position.y));
+        auto transformedOdom = rescaleToGrid(transformPoseToTargetFrame(odomMsg->pose.pose, odomMsg->header.frame_id, grid.header.frame_id));
+        ROS_INFO_STREAM("Transformed odom is:" << rescaleFromGrid(transformedOdom));
+        map.setStart(int(transformedOdom.position.y),
+                        int(transformedOdom.position.x));
     }else{
         ROS_WARN_STREAM("No grid received! Cannot set odometry.");
     }
 }
 
-bool Planner::plan(){
+bool Planner::plan() {
     XmlLogger *logger = new XmlLogger("nope");
     const EnvironmentOptions options;
+
+    if((map.goal_i > map.width) || (map.goal_j > map.height) || (map.goal_i * map.goal_j < 0)){
+        ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
+        return false;
+    }
+
     ROS_INFO_STREAM(map.start_i << "  " << map.start_j);
     ROS_INFO_STREAM(map.goal_i << "  " << map.goal_j);
     auto searchRes = search.startSearch(logger, map, options);
@@ -209,8 +216,8 @@ void Planner::fillPath(std::list<Node> lppath){
     path.header.frame_id = grid.header.frame_id;
     geometry_msgs::Pose point;
     for (auto node : lppath){
-        point.position.x = node.i;
-        point.position.y = node.j;
+        point.position.x = node.j;
+        point.position.y = node.i;
         path.poses.push_back(point);
     }
 }
