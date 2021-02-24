@@ -11,7 +11,7 @@ Occupancy grid в rtabmap представлена стандартными со
 **2. Переход из системы координат карты в систему координат одометрии (в систему координат baselink робота)** 
 ---
 (Андрей Криштопик + Линар Абдразаков + Владислав Головин)<br/>
-Чтобы получить трансформацию между различными системами координат, можно использовать функцию [lookupTransform](http://wiki.ros.org/tf2/Tutorials/Writing%20a%20tf2%20listener%20%28C%2B%2B%29) для C++ или [lookup_transform](http://wiki.ros.org/tf2/Tutorials/Writing%20a%20tf2%20listener%20%28Python%29) для Python. Пример получения координат робота в мировой системе координат можно посмотреть в скрипте occupancy\_grid\_demo.py в папке occupancy\_grid\_mapping/rtabmap\_example/scripts в функции get\_robot\_world\_pose.
+Чтобы получить трансформацию между различными системами координат, можно использовать функцию [lookupTransform](http://wiki.ros.org/tf2/Tutorials/Writing%20a%20tf2%20listener%20%28C%2B%2B%29) для C++ или [lookup_transform](http://wiki.ros.org/tf2/Tutorials/Writing%20a%20tf2%20listener%20%28Python%29) для Python. Пример получения координат робота в мировой системе координат можно посмотреть в скрипте occupancy\_grid\_demo.py в папке occupancy\_grid\_mapping/rtabmap\_example/scripts в функции get\_robot\_world\_pose. 
 
 
 
@@ -39,7 +39,7 @@ Occupancy grid в rtabmap представлена стандартными со
 **6. О планировании движения к цели, заданной на карте** 
 ---
 (Владислав Головин)<br/>
-
+Планирование движения осуществляется с помощью дополнительных узлов, находящихся в папке [planning](planning). Для постановки задачи планировщику используются как стандартные инструменты ROS, а именно, [rviz](http://wiki.ros.org/rviz) со встроенным в него пакетом [move\_base\_simple](http://wiki.ros.org/move_base_simple), так и вручную созданные узлы, передающие [карту проходимости](occupancy_grid_mapping) и [одометрию](odometry). Подробнее о работе узла планирования написано [здесь](planning/README.md).
 **7. О реализации движения по траектории** 
 ---
 (Мухаммад Алхаддад)<br/>
