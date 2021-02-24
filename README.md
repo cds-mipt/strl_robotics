@@ -28,7 +28,7 @@ Occupancy grid в rtabmap представлена стандартными со
 ---
 **Пример вывода топика /status при питании робота от сети**
 
-<font size="8">
+<font size="5">
 
 header:\                              
   seq: 28287\
