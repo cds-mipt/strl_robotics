@@ -1,1 +1,6 @@
+<launch>
 
+    <node name="husky_mobile02" pkg="husky_mobile02" type="husky_mobile02" output="screen">
+    </node>
+
+</launch>
