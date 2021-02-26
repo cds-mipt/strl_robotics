@@ -3,7 +3,4 @@
 
 запустить:
 
-    ```
     $ roslaunch husky_mobile02 control.launch 
-    ```
-
