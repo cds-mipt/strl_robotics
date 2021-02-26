@@ -42,8 +42,7 @@ private:
 
     Map         map;
     Astar       search = Astar(1,1);
-    ISearch*    search1;
-//    Mission mission;
+    SearchResult searchRes;
 
     std::string odomTopic;
     std::string taskTopic;
@@ -53,8 +52,8 @@ private:
 
     std::string searchType;
 
-    bool gridSet;
-//    cds_msgs::PathStamped path;
+    bool gridSet = false;
+    bool taskSet = false;
     geometry_msgs::PoseArray path;
 public:
     Planner(tf2_ros::Buffer& _tfBuffer);
@@ -63,7 +62,9 @@ public:
     void setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg);
 
     bool plan();
-    void fillPath(std::list<Node> lppath);
+    bool replan();
+    bool checkPath();
+    void fillPath(std::list<Node> nodePath);
     void fillPathVis();
     void transformPath();
     void publish();
@@ -127,35 +128,23 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
                                                                                 &Planner::setOdom,
                                                                                 this);
 
-//    trajPub                     = nh.advertise<cds_msgs::PathStamped>           (pathTopic,
-//                                                                                50);
-
     trajPub                     = nh.advertise<geometry_msgs::PoseArray>        (pathTopic,
                                                                                 50);
 
     visTrajPub                  = nh.advertise<visualization_msgs::Marker>      (pathTopicVis,
                                                                                  50);
 
-//    if (search1)
-//        delete search1;
-//    if (searchType == "bfs")
-//        search1 = new BFS();
-//    else if (searchType  == "dijkstra")
-//        search1 = new Dijkstra();
-//    else if (searchType  == "astar")
-//        search1 = new Astar(1, 1);
-//    else if (searchType  == "jp_search")
-//        search1 = new JP_Search(1, 1);
-//    else if (searchType  == "theta")
-//        search1 = new Theta(1, 1);
 }
 
 void Planner::setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg) {
+    taskSet = true;
+
     if(gridSet){
         auto transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goalMsg->pose, goalMsg->header.frame_id, grid.header.frame_id));
-        ROS_INFO_STREAM("Transformed goal is:" << rescaleFromGrid(transformedGoal));
         map.setGoal(int(transformedGoal.position.y),
                         int(transformedGoal.position.x));
+//        map.setGoal(int(transformedGoal.position.x),
+//                        int(transformedGoal.position.y));
         if(!plan()) ROS_WARN_STREAM("Planning error! Resulted path is empty.");
         publish();
     }else{
@@ -164,58 +153,112 @@ void Planner::setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg) {
 }
 
 void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
-    this->grid = *gridMsg;
-    if(map.getMap(gridMsg)) {
-        gridSet = true;
-    }else {
-        ROS_WARN_STREAM("Cannot set map!");
+    if(gridMsg->data.size() != 0){
+        this->grid = *gridMsg;
+        if(map.getMap(gridMsg)) {
+            gridSet = true;
+            if(taskSet){
+                if(replan()){
+                    if(checkPath()){
+                        publish();
+                    }else{
+                        ROS_ERROR_STREAM("Current path has collision! Interrupting");
+                    }
+                }
+            }
+        }else {
+            ROS_WARN_STREAM("Cannot set map!");
+            gridSet = false;
+        }
+    }else{
         gridSet = false;
+        ROS_WARN_STREAM("Received map is empty!");
     }
+
+
 }
 
 void Planner::setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg) {
     this->odom = *odomMsg;
     if(gridSet){
         auto transformedOdom = rescaleToGrid(transformPoseToTargetFrame(odomMsg->pose.pose, odomMsg->header.frame_id, grid.header.frame_id));
-        ROS_INFO_STREAM("Transformed odom is:" << rescaleFromGrid(transformedOdom));
         map.setStart(int(transformedOdom.position.y),
                         int(transformedOdom.position.x));
     }else{
         ROS_WARN_STREAM("No grid received! Cannot set odometry.");
     }
 }
+bool Planner::replan(){
+    auto old_searchRes = searchRes;
+    if(!plan()) {
+        ROS_WARN_STREAM("Replanning error! Checking feasibility of previous path");
+        return false;
+    }else{
+        if(searchRes.pathlength > old_searchRes.pathlength){
+            searchRes = old_searchRes;
+        }else{
+            if (searchRes.hppath->size() == 0) return false;
 
+            auto nodePath = searchRes.hppath;
+            fillPath(*nodePath);
+            transformPath();
+            fillPathVis();
+        }
+    }
+}
 bool Planner::plan() {
     XmlLogger *logger = new XmlLogger("nope");
     const EnvironmentOptions options;
 
-    if((map.goal_i > map.width) || (map.goal_j > map.height) || (map.goal_i * map.goal_j < 0)){
+    ROS_INFO_STREAM(map.start_i << "  " << map.start_j);
+    ROS_INFO_STREAM(map.goal_i << "  " << map.goal_j);
+
+    if((map.start_j > map.width) || (map.start_i > map.height) || (map.start_j < 0) || (map.start_i < 0)){
         ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
         return false;
     }
 
-    ROS_INFO_STREAM(map.start_i << "  " << map.start_j);
-    ROS_INFO_STREAM(map.goal_i << "  " << map.goal_j);
-    auto searchRes = search.startSearch(logger, map, options);
-    std::cout << "Planning time: " << searchRes.time << std::endl;
-
-    const std::list<Node>* lppath = searchRes.lppath;
-    if (lppath->size() != 0){
-        fillPath(*lppath);
-        transformPath();
-        fillPathVis();
-        return true;
-    }
-    else{
+    if((map.goal_j > map.width) || (map.goal_i > map.height) || (map.goal_j < 0) || (map.goal_i < 0)){
+        ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
         return false;
     }
+    if (map.CellIsObstacle(map.start_i, map.start_j)) {
+        ROS_WARN_STREAM("Error! Start cell is not traversable. Interrupting");
+        return false;
+    }
+
+    if (map.CellIsObstacle(map.goal_i, map.goal_j)) {
+        ROS_WARN_STREAM("Error! Goal cell is not traversable. Interrupting");
+        return false;
+    }
+
+
+    searchRes = search.startSearch(logger, map, options);
+    std::cout << "Planning time: " << searchRes.time << std::endl;
+
+    if (searchRes.hppath->size() == 0) return false;
+
+    auto nodePath = searchRes.hppath;
+    fillPath(*nodePath);
+    transformPath();
+    fillPathVis();
+
+    return true;
 }
 
-void Planner::fillPath(std::list<Node> lppath){
+bool Planner::checkPath() {
+    auto lppath = *searchRes.lppath;
+    for(auto node : lppath){
+        if(map.CellIsObstacle(node.i, node.j)) return false;
+    }
+    return true;
+}
+
+void Planner::fillPath(std::list<Node> nodePath){
     path.poses.clear();
     path.header.frame_id = grid.header.frame_id;
     geometry_msgs::Pose point;
-    for (auto node : lppath){
+    for (auto node : nodePath){
         point.position.x = node.j;
         point.position.y = node.i;
         path.poses.push_back(point);

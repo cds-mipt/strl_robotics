@@ -58,8 +58,7 @@ void ObstInf::inflate_comm(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
     map.setHeight(gridMsg->info.height);
     for (int i = 0; i < gridMsg->data.size(); i++){
         ROS_INFO_STREAM(int(i/gridMsg->info.height));
-//        map.setCell(int(gridMsg->info.height) -1- int(i/gridMsg->info.height) , int(i%gridMsg->info.width), gridMsg->data[i]==100);
-        map.setCell(int(i%gridMsg->info.width),int(i/gridMsg->info.height), gridMsg->data[i]==100);
+        map.setCell(int(i%gridMsg->info.width),int(i/gridMsg->info.width), gridMsg->data[i]==100);
     }
 
 //std::chrono::time_point<std::chrono::system_clock> start, finish;

@@ -1,4 +1,4 @@
 {
-  grid_topic: "occupancy/accumulated",
+  grid_topic: "fancy_grid",
   raw_grid_topic: "grid_map",
 }
