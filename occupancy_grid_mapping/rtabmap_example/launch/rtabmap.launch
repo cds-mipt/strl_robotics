@@ -20,6 +20,9 @@
     <node if="$(eval odom == 'openvslam')" pkg="rtabmap_example" type="openvslam_odom_to_base_link.py" name="openvslam_odom_to_base_link" output="screen"/>
     <arg if="$(eval odom == 'openvslam')" name="odom_topic" value="/OpenVSLAM/odom_base_link"/>
     <arg if="$(eval odom == 'rtabmap')" name="odom_topic" value="odom"/>
+    
+    <!-- local - localization -->
+    <arg name="local" default="false"/>
 
     <!-- Rtabmap mapping -->
     <node pkg="rtabmap_ros" type="rtabmap" name="rtabmap" ns="rtabmap" output="screen" args="$(arg rtabmap_args)">
@@ -50,6 +53,10 @@
         <!-- Параметры синхронизации сообщений -->
         <param name="approx_sync" value="true"/>
         <param name="queue_size" value="10"/>
+        
+        <!-- Режим локализации или картирования -->
+        <param if="$(arg local)" name="Mem/IncrementalMemory" value="false"/>
+        <param unless="$(arg local)" name="Mem/IncrementalMemory" value="true"/>
         
         <!-- Параметры rtabmap -->
         <param name="Rtabmap/DetectionRate" value="100"/>
