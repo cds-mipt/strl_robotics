@@ -36,8 +36,10 @@ private:
     ros::Publisher      visTrajPub;
 
     tf2_ros::Buffer&                tfBuffer;
-    nav_msgs::OccupancyGrid         grid;
+
     nav_msgs::Odometry              odom;
+    geometry_msgs::PoseStamped      goal;
+    nav_msgs::OccupancyGrid         grid;
     visualization_msgs::Marker      vis_path;
 
     Map         map;
@@ -138,13 +140,8 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
 
 void Planner::setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg) {
     taskSet = true;
-
+    this->goal = *goalMsg;
     if(gridSet){
-        auto transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goalMsg->pose, goalMsg->header.frame_id, grid.header.frame_id));
-        map.setGoal(int(transformedGoal.position.y),
-                        int(transformedGoal.position.x));
-//        map.setGoal(int(transformedGoal.position.x),
-//                        int(transformedGoal.position.y));
         if(!plan()) ROS_WARN_STREAM("Planning error! Resulted path is empty.");
         publish();
     }else{
@@ -180,13 +177,7 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
 
 void Planner::setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg) {
     this->odom = *odomMsg;
-    if(gridSet){
-        auto transformedOdom = rescaleToGrid(transformPoseToTargetFrame(odomMsg->pose.pose, odomMsg->header.frame_id, grid.header.frame_id));
-        map.setStart(int(transformedOdom.position.y),
-                        int(transformedOdom.position.x));
-    }else{
-        ROS_WARN_STREAM("No grid received! Cannot set odometry.");
-    }
+    if(!gridSet) ROS_WARN_STREAM("No grid received! Cannot set odometry.");
 }
 bool Planner::replan(){
     auto old_searchRes = searchRes;
@@ -209,6 +200,14 @@ bool Planner::replan(){
 bool Planner::plan() {
     XmlLogger *logger = new XmlLogger("nope");
     const EnvironmentOptions options;
+
+    auto transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goal.pose, goal.header.frame_id, grid.header.frame_id));
+    map.setGoal(int(transformedGoal.position.y),
+                int(transformedGoal.position.x));
+
+    auto transformedOdom = rescaleToGrid(transformPoseToTargetFrame(odom.pose.pose, odom.header.frame_id, grid.header.frame_id));
+    map.setStart(int(transformedOdom.position.y),
+                 int(transformedOdom.position.x));
 
     ROS_INFO_STREAM(map.start_i << "  " << map.start_j);
     ROS_INFO_STREAM(map.goal_i << "  " << map.goal_j);
