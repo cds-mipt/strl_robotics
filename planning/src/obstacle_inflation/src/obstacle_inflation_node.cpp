@@ -24,7 +24,7 @@ private:
     nav_msgs::OccupancyGrid grid;
 
     int occupancy_threshold = 40;
-    double robot_size = 0.25;
+    double robot_size;
 public:
     ObstInf();
     void inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg);
@@ -36,6 +36,8 @@ ObstInf::ObstInf() {
 
     nh.param<std::string>("/node_params/grid_topic", gridTopic, "some_grid");
     nh.param<std::string>("/node_params/raw_grid_topic", rawGridTopic, "some_raw_grid");
+
+    nh.param<double>("/node_params/robot_size", robot_size, 1.0);
 
     rawGridSub   =      nh.subscribe<nav_msgs::OccupancyGrid>       (rawGridTopic,
                                                                     50,
@@ -90,11 +92,11 @@ void ObstInf::inflate_comm(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
 
 void ObstInf::inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
     this->grid = *gridMsg;
-
+    ROS_INFO_STREAM("Received grid. Inflating");
     map.setWidth(gridMsg->info.width);
     map.setHeight(gridMsg->info.height);
     for (int i = 0; i < gridMsg->data.size(); i++) {
-        map.setCell(int(i % gridMsg->info.width), int(i / gridMsg->info.height), gridMsg->data[i] == 100);
+        map.setCell(int(i % gridMsg->info.width), int(i / gridMsg->info.width), gridMsg->data[i] > 50);
     }
 
     map.computeDistances();
@@ -122,6 +124,7 @@ int main(int argc, char **argv){
     
     while(ros::ok()){
         ros::spinOnce();
+        ROS_WARN_STREAM("No grid received. Waiting");
         r.sleep();
     }
 }
