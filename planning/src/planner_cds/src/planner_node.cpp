@@ -154,15 +154,15 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
         this->grid = *gridMsg;
         if(map.getMap(gridMsg)) {
             gridSet = true;
-            if(taskSet){
-                if(replan()){
-                    if(checkPath()){
-                        publish();
-                    }else{
-                        ROS_ERROR_STREAM("Current path has collision! Interrupting");
-                    }
-                }
-            }
+//            if(taskSet){
+//                if(replan()){
+//                    if(checkPath()){
+//                        publish();
+//                    }else{
+//                        ROS_ERROR_STREAM("Current path has collision! Interrupting");
+//                    }
+//                }
+//            }
         }else {
             ROS_WARN_STREAM("Cannot set map!");
             gridSet = false;
@@ -185,7 +185,7 @@ bool Planner::replan(){
         ROS_WARN_STREAM("Replanning error! Checking feasibility of previous path");
         return false;
     }else{
-        if(searchRes.pathlength > old_searchRes.pathlength){
+        if(searchRes.pathlength < old_searchRes.pathlength){
             searchRes = old_searchRes;
         }else{
             if (searchRes.hppath->size() == 0) return false;
@@ -211,14 +211,14 @@ bool Planner::plan() {
 
     ROS_INFO_STREAM(map.start_i << "  " << map.start_j);
     ROS_INFO_STREAM(map.goal_i << "  " << map.goal_j);
-
+//
     if((map.start_j > map.width) || (map.start_i > map.height) || (map.start_j < 0) || (map.start_i < 0)){
-        ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
+        ROS_WARN_STREAM("Wrong goal coordinates-1! Interrupting");
         return false;
     }
 
     if((map.goal_j > map.width) || (map.goal_i > map.height) || (map.goal_j < 0) || (map.goal_i < 0)){
-        ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
+        ROS_WARN_STREAM("Wrong goal coordinates-2! Interrupting");
         return false;
     }
     if (map.CellIsObstacle(map.start_i, map.start_j)) {
@@ -294,7 +294,7 @@ void Planner::transformPath(){
     }
 
 
-    path.header.frame_id = odom.header.frame_id;
+//    path.header.frame_id = odom.header.frame_id;
 }
 
 void Planner::publish(){
