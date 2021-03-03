@@ -5,7 +5,6 @@
 1. Разметка данных через фреймворк [cvat](https://github.com/openvinotoolkit/cvat).
     - видеоматериалы для разметки разделены на tasks в рамках одного проекта для гибкого управления labels
     - применен [трекинг](https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/user_guide.md#track-mode-basics) при разметке данных
-    - яндекс толока?
     - данные выгружаются как датасеты в формате COCO v1.0 вида annotations/ images для каждой task
     - c помощью скрипта produce_train_val_test.py из размеченных tasks сформированы датасеты для тренировки, валидации и теста 
     (данные находятся на cds-server /home/linok_sa/datasets/lift/single_dataset)
