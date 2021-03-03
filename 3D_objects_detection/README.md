@@ -11,6 +11,6 @@
     (данные находятся на cds-server /home/linok_sa/datasets/lift/single_dataset)
 
 2. Сегментация кнопок моделью [SOLOv2](https://github.com/WXinlong/SOLO).
-    - описание особенностей конфиг файла (аугментация !)
+    - [модуль](https://github.com/WXinlong/SOLO/blob/0c689aec145cb0a7a62f14c83b920b65e64faa1e/mmdet/datasets/pipelines/transforms.py#L722), отвечающий за аугментацию при обучении 
     - примеры работы находятся в папке solov2/examples
     
