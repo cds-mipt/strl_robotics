@@ -43,8 +43,10 @@ private:
     visualization_msgs::Marker      vis_path;
 
     Map         map;
-    Astar       search = Astar(1,1);
+    //Astar       search = Astar(1,1);
     SearchResult searchRes;
+
+    ISearch* search = nullptr;
 
     std::string odomTopic;
     std::string taskTopic;
@@ -136,6 +138,20 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
     visTrajPub                  = nh.advertise<visualization_msgs::Marker>      (pathTopicVis,
                                                                                  50);
 
+
+
+    if (search)
+        delete search;
+    if (searchType == "bfs")
+        search = new BFS();
+    else if (searchType  == "dijkstra")
+        search = new Dijkstra();
+    else if (searchType  == "astar")
+        search = new Astar(1, 1);
+    else if (searchType  == "jp_search")
+        search = new JP_Search(1, 1);
+    else if (searchType  == "theta")
+        search = new Theta(1, 1);
 }
 
 void Planner::setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg) {
@@ -154,15 +170,15 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
         this->grid = *gridMsg;
         if(map.getMap(gridMsg)) {
             gridSet = true;
-//            if(taskSet){
-//                if(replan()){
-//                    if(checkPath()){
-//                        publish();
-//                    }else{
-//                        ROS_ERROR_STREAM("Current path has collision! Interrupting");
-//                    }
-//                }
-//            }
+            if(taskSet){
+                if(replan()){
+                    if(checkPath()){
+                        publish();
+                    }else{
+                        ROS_ERROR_STREAM("Current path has collision! Interrupting");
+                    }
+                }
+            }
         }else {
             ROS_WARN_STREAM("Cannot set map!");
             gridSet = false;
@@ -232,7 +248,7 @@ bool Planner::plan() {
     }
 
 
-    searchRes = search.startSearch(logger, map, options);
+    searchRes = search->startSearch(logger, map, options);
     std::cout << "Planning time: " << searchRes.time << std::endl;
 
     if (searchRes.hppath->size() == 0) return false;
@@ -294,7 +310,7 @@ void Planner::transformPath(){
     }
 
 
-//    path.header.frame_id = odom.header.frame_id;
+    path.header.frame_id = odom.header.frame_id;
 }
 
 void Planner::publish(){

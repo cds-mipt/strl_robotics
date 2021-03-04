@@ -99,28 +99,24 @@ void ObstInf::inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
         map.setCell(int(i % gridMsg->info.width), int(i / gridMsg->info.width), gridMsg->data[i] > 50);
     }
 
-    map.computeDistances();
+    map.computeDistances();//todo: publish distance map
 
     double robotCellSize = robot_size / grid.info.resolution;
     for (int y = 0; y < map.getHeight(); ++y) {
         for (int x = 0; x < map.getWidth(); ++x) {
             if (map.getDistance(x, y) < robotCellSize && map.getDistance(x, y) > 0) {
-                grid.data[y * grid.info.width + x] = 50;
+                grid.data[y * grid.info.width + x] = 100;
             }
-
         }
     }
-
     gridPub.publish(grid);
 }
 
 int main(int argc, char **argv){
     ros::init(argc, argv, "inflator");
 
-
     ObstInf Inflator;
     ros::Rate r(50);
-
     
     while(ros::ok()){
         ros::spinOnce();
