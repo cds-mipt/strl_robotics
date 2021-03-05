@@ -62,6 +62,9 @@
         <param name="Rtabmap/DetectionRate" value="100"/>
         <param name="Grid/RayTracing" value="true"/>
         <param name="Grid/FromDepth" value="false"/>
+        <param name="Grid/MaxObstacleHeight" value="1.5"/>
+        <param name="Grid/MaxGroundHeight" value="0.01"/> <!-- Должно быть отлично от нуля -->
+        <param name="Grid/3D" value="false"/>
     </node>
 
 </launch>
