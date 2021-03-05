@@ -36,13 +36,17 @@ private:
     ros::Publisher      visTrajPub;
 
     tf2_ros::Buffer&                tfBuffer;
-    nav_msgs::OccupancyGrid         grid;
+
     nav_msgs::Odometry              odom;
+    geometry_msgs::PoseStamped      goal;
+    nav_msgs::OccupancyGrid         grid;
     visualization_msgs::Marker      vis_path;
 
     Map         map;
-    Astar       search = Astar(1,1);
+    //Astar       search = Astar(1,1);
     SearchResult searchRes;
+
+    ISearch* search = nullptr;
 
     std::string odomTopic;
     std::string taskTopic;
@@ -134,17 +138,26 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
     visTrajPub                  = nh.advertise<visualization_msgs::Marker>      (pathTopicVis,
                                                                                  50);
 
+
+
+    if (search)
+        delete search;
+    if (searchType == "bfs")
+        search = new BFS();
+    else if (searchType  == "dijkstra")
+        search = new Dijkstra();
+    else if (searchType  == "astar")
+        search = new Astar(1, 1);
+    else if (searchType  == "jp_search")
+        search = new JP_Search(1, 1);
+    else if (searchType  == "theta")
+        search = new Theta(1, 1);
 }
 
 void Planner::setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg) {
     taskSet = true;
-
+    this->goal = *goalMsg;
     if(gridSet){
-        auto transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goalMsg->pose, goalMsg->header.frame_id, grid.header.frame_id));
-        map.setGoal(int(transformedGoal.position.y),
-                        int(transformedGoal.position.x));
-//        map.setGoal(int(transformedGoal.position.x),
-//                        int(transformedGoal.position.y));
         if(!plan()) ROS_WARN_STREAM("Planning error! Resulted path is empty.");
         publish();
     }else{
@@ -180,13 +193,7 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
 
 void Planner::setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg) {
     this->odom = *odomMsg;
-    if(gridSet){
-        auto transformedOdom = rescaleToGrid(transformPoseToTargetFrame(odomMsg->pose.pose, odomMsg->header.frame_id, grid.header.frame_id));
-        map.setStart(int(transformedOdom.position.y),
-                        int(transformedOdom.position.x));
-    }else{
-        ROS_WARN_STREAM("No grid received! Cannot set odometry.");
-    }
+    if(!gridSet) ROS_WARN_STREAM("No grid received! Cannot set odometry.");
 }
 bool Planner::replan(){
     auto old_searchRes = searchRes;
@@ -194,7 +201,7 @@ bool Planner::replan(){
         ROS_WARN_STREAM("Replanning error! Checking feasibility of previous path");
         return false;
     }else{
-        if(searchRes.pathlength > old_searchRes.pathlength){
+        if(searchRes.pathlength < old_searchRes.pathlength){
             searchRes = old_searchRes;
         }else{
             if (searchRes.hppath->size() == 0) return false;
@@ -210,16 +217,24 @@ bool Planner::plan() {
     XmlLogger *logger = new XmlLogger("nope");
     const EnvironmentOptions options;
 
+    auto transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goal.pose, goal.header.frame_id, grid.header.frame_id));
+    map.setGoal(int(transformedGoal.position.y),
+                int(transformedGoal.position.x));
+
+    auto transformedOdom = rescaleToGrid(transformPoseToTargetFrame(odom.pose.pose, odom.header.frame_id, grid.header.frame_id));
+    map.setStart(int(transformedOdom.position.y),
+                 int(transformedOdom.position.x));
+
     ROS_INFO_STREAM(map.start_i << "  " << map.start_j);
     ROS_INFO_STREAM(map.goal_i << "  " << map.goal_j);
-
+//
     if((map.start_j > map.width) || (map.start_i > map.height) || (map.start_j < 0) || (map.start_i < 0)){
-        ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
+        ROS_WARN_STREAM("Wrong goal coordinates-1! Interrupting");
         return false;
     }
 
     if((map.goal_j > map.width) || (map.goal_i > map.height) || (map.goal_j < 0) || (map.goal_i < 0)){
-        ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
+        ROS_WARN_STREAM("Wrong goal coordinates-2! Interrupting");
         return false;
     }
     if (map.CellIsObstacle(map.start_i, map.start_j)) {
@@ -233,7 +248,7 @@ bool Planner::plan() {
     }
 
 
-    searchRes = search.startSearch(logger, map, options);
+    searchRes = search->startSearch(logger, map, options);
     std::cout << "Planning time: " << searchRes.time << std::endl;
 
     if (searchRes.hppath->size() == 0) return false;

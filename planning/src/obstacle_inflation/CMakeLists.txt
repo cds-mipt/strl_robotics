@@ -206,7 +206,9 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-
+catkin_install_python(PROGRAMS scripts/simple_grid.py
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+        )
 
 add_executable(obstacle_inflation src/obstacle_inflation_node.cpp src/map.cpp)
 add_dependencies(obstacle_inflation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

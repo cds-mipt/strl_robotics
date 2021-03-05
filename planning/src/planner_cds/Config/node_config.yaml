@@ -4,5 +4,5 @@
   grid_topic: "occupancy/accumulated",
   path_topic: "planning_node/trajectory",
   path_topic_vis: "path_visualization",
-  search_type: "bfs"
+  search_type: "theta"
 }

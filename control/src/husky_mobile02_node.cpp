@@ -132,7 +132,7 @@ void lon_control()
         if(abs(angle_angular_error)<0.5)
         {
           //  if(distance_linear_error>4)
-            v_current = sat_linear_velocity(1,0.25,0.25 ,distance_linear_error ,  v_old);
+            v_current = sat_linear_velocity(0.5,0.25,0.25 ,distance_linear_error ,  v_old);
           //  else if (distance_linear_error<= 4 &&  distance_linear_error >2 )
           //  v_current = sat_linear_velocity(1,0.25,-0.25 , v_old);
            // ROS_INFO("v_current: [ %f  ]",  v_current);
@@ -169,7 +169,7 @@ void lat_control()
      w_current=sat_angular_speed(1,0,angle_angular_error , w_old); 
         tw_msg.angular.z=w_current;// + 5*e_dif);
         w_old=0;
-        if (distance_angular_error<0.7 && k_w <old_size_path-1)
+        if (distance_angular_error<0.5 && k_w <old_size_path-1)
         {
             k_w++;
             e_dif=0;

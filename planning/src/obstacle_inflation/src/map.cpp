@@ -46,7 +46,7 @@ void Map::setWidth(unsigned int width)
 void Map::setHeight(unsigned int height)
 {
     _height = height;
-	for (unsigned int i = 0; i < _height; ++i)
+	for (unsigned int i = 0; i < _width; ++i)
   {
       _grid[i] = new bool[_height];
       _distances[i] = new double[_height];
@@ -118,8 +118,8 @@ float * Map::dt1(float *f, int n)
 void Map::dt(float *image)
 {
   
-  float *f = new float[std::max(_width, _height)];
-
+//  float *f = new float[std::max(_width, _height)];
+  float *f = new float[_height];
   // transform along columns
   for (int x = 0; x < _width; x++)
   {
@@ -136,6 +136,8 @@ void Map::dt(float *image)
     delete [] d;
   }
 
+  delete f;
+  f = new float[_width];
   // transform along rows
 
 
@@ -173,27 +175,28 @@ void Map::computeDistances()
 
 	dt(image);
 
-	//std::ofstream output;
-	//output.open("../test/distanceMap.txt");
-    auto diff = std::max(_height, _width) - std::min(_height, _width);
+	std::ofstream output;
+	output.open("/home/vlad/lab_ws/src/obstacle_inflation/output/test.txt");
+
 	for (int y = 0 ; y < _height; ++y)
 	{
 		for (int x = 0 ; x < _width; ++x)
 		{
 			//_distances[x][_height - y - 1] = sqrt(image[x + y * _width]);
-      _distances[x][y] = sqrt(image[x + y * _width]);
-			//output << sqrt(_distances[x][y]) << " ";
+            _distances[x][y] = sqrt(image[x + y * _width]);
+
+			output << sqrt(_distances[x][y]) << " ";
 			//std::cout << sqrt(_distances[i][j]) << " ";
 		}
 		//std::cout << "\n";
-		//output << "\n";
+		output << "\n";
 	}
 
-	//output.close();
+	output.close();
 	delete image;
 }
 
-double Map::getDistance(int xi, int yi) const
+double Map::getDistance(int x, int y) const
 {
-	return _distances[xi][yi];
+	return _distances[x][y];
 }
