@@ -25,6 +25,7 @@ odom0_differential: true
 odom0_relative: false
 odom0_queue_size: 2
 odom0_nodelay: false
+odom0_pose_rejection_threshold: 5
 
 # configuration for vision odometry
 odom1: /visual_odom
@@ -37,6 +38,7 @@ odom1_differential: true
 odom1_relative: false
 odom1_queue_size: 2
 odom1_nodelay: false
+odom1_pose_rejection_threshold: 5
 
 
 # configuration for wheel odometry
@@ -81,9 +83,9 @@ dynamic_process_noise_covariance: true
 process_noise_covariance: [0.01, 0,    0,    0,      0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                            0,    0.01, 0,    0,      0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                            0,    0,    0.03, 0,      0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
-                           0,    0,    0,    0.0005, 0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
-                           0,    0,    0,    0,      0.0005, 0,      0,     0,     0,    0,    0,    0,    0,    0,    0,
-                           0,    0,    0,    0,      0,      0.002, 0,     0,     0,    0,    0,    0,    0,    0,    0,
+                           0,    0,    0,    0.0015, 0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                           0,    0,    0,    0,      0.0015, 0,      0,     0,     0,    0,    0,    0,    0,    0,    0,
+                           0,    0,    0,    0,      0,      0.005, 0,     0,     0,    0,    0,    0,    0,    0,    0,
                            0,    0,    0,    0,      0,      0,    0.25, 0,     0,    0,    0,    0,     0,    0,    0,
                            0,    0,    0,    0,      0,      0,    0,     0.25, 0,    0,    0,    0,     0,    0,    0,
                            0,    0,    0,    0,      0,      0,    0,     0,     0.75, 0,    0,    0,    0,    0,    0,
