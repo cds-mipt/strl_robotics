@@ -42,7 +42,7 @@ void inverse(Eigen::Matrix4d& in, Eigen::Matrix4d& out)
 	t = in.block(0, 3, 3, 1);
 	// inverse translation
 	Eigen::Vector3d t_inv;
-	t_inv = -1 * rot * t;
+	t_inv = -1 * rot.transpose() * t;
 	// set inversed translation
 	out.block(0, 3, 3, 1) = t_inv;
 }
@@ -217,7 +217,11 @@ void odomCallback(const nav_msgs::Odometry& msg)
             std::vector<double> covariance;
             ros::param::get("~covariance", covariance);
             for (int i = 0; i < 36 && i < covariance.size(); ++i) msg_result.pose.covariance[i] = covariance[i];
-        }
+        } 
+    	else 
+    	{
+    		for (int i = 0; i < 36; ++i) msg_result.pose.covariance[i] = msg.pose.covariance[i];
+    	}
     	// publish odometry
     	pub.publish(msg_result);
  	}
@@ -236,7 +240,7 @@ int main(int argc, char **argv)
 	std::string in_topic, out_topic;
 	ros::param::get("~in_topic", in_topic);
 	ros::param::get("~out_topic", out_topic);
-        ros::param::get("~reset_odom", reset_odom);
+    ros::param::get("~reset_odom", reset_odom);
 
 	tf2_ros::TransformListener tfListener(tfBuffer);
 
