@@ -24,13 +24,19 @@ private:
 
     Map map = Map(600, 600);
     nav_msgs::OccupancyGrid grid;
+    nav_msgs::OccupancyGrid costmap;
 
     int occupancy_threshold = 40;
     double robot_size;
-    int log_level;
+    double safe_size;
+
 public:
     ObstInf();
+
+    int log_level;
+
     void inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg);
+    void publish();
 };
 
 ObstInf::ObstInf() {
@@ -41,7 +47,8 @@ ObstInf::ObstInf() {
     nh.param<std::string>("/inflation_params/costmap_topic", costmapTopic, "some_costmap");
 
     nh.param<double>("/inflation_params/robot_size", robot_size, 1.0);
-    nh.param<int>("/inflation_params/log_leve", robot_size, 1);
+    nh.param<double>("/inflation_params/safe_size", safe_size, 1.0);
+    nh.param<int>("/inflation_params/log_level", log_level, 1);
 
     rawGridSub   =      nh.subscribe<nav_msgs::OccupancyGrid>       (rawGridTopic,
                                                                     50,
@@ -59,16 +66,20 @@ ObstInf::ObstInf() {
 
 void ObstInf::inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
     this->grid = *gridMsg;
-    ROS_INFO_STREAM("Received grid. Inflating");
+    this->costmap = grid;
+
+    if(log_level) ROS_INFO_STREAM("Received grid. Inflating");
     map.setWidth(gridMsg->info.width);
     map.setHeight(gridMsg->info.height);
     for (int i = 0; i < gridMsg->data.size(); i++) {
-        map.setCell(int(i % gridMsg->info.width), int(i / gridMsg->info.width), gridMsg->data[i] > 50);
+        map.setCell(int(i % gridMsg->info.width), int(i / gridMsg->info.width), gridMsg->data[i] > 0);
     }
 
     map.computeDistances();//todo: publish distance map
 
     double robotCellSize = robot_size / grid.info.resolution;
+    double safeCellSize = safe_size / grid.info.resolution;
+    //!Here we create gird for planner to plan on
     for (int y = 0; y < map.getHeight(); ++y) {
         for (int x = 0; x < map.getWidth(); ++x) {
             if (map.getDistance(x, y) < robotCellSize && map.getDistance(x, y) > 0) {
@@ -76,9 +87,28 @@ void ObstInf::inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
             }
         }
     }
-    gridPub.publish(grid);
+    //!Here we create costmap for visualization and debug
+    for (int y = 0; y < map.getHeight(); ++y) {
+        for (int x = 0; x < map.getWidth(); ++x) {
+            if (map.getDistance(x, y) < robotCellSize && map.getDistance(x, y) > 0) {
+                costmap.data[y * grid.info.width + x] = int(100 - map.getDistance(x, y) * 20 / robotCellSize);
+
+            }else if (map.getDistance(x, y) < safeCellSize && map.getDistance(x, y) > robotCellSize){
+                costmap.data[y * grid.info.width + x] = int(80 - (map.getDistance(x, y) - robotCellSize) * 30 / (robotCellSize - safeCellSize));
+
+            }else if(map.getDistance(x, y) > safeCellSize){
+                costmap.data[y * grid.info.width + x] = int(50*exp(-(map.getDistance(x, y) - safeCellSize)));
+            }
+        }
+    }
+
+    publish();
 }
 
+void ObstInf::publish(){
+    gridPub.publish(grid);
+    costmapPub.publish(costmap);
+}
 int main(int argc, char **argv){
     ros::init(argc, argv, "inflator");
 
@@ -87,7 +117,7 @@ int main(int argc, char **argv){
     
     while(ros::ok()){
         ros::spinOnce();
-        ROS_WARN_STREAM("No grid received. Waiting");
+        if(Inflator.log_level) ROS_WARN_STREAM("No grid received. Waiting");
         r.sleep();
     }
 }
