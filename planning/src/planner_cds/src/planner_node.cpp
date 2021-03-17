@@ -69,6 +69,7 @@ public:
     void getRobotPose();
     bool plan();
     bool replan();
+    void replan(bool isCurrentPathFeasible);
     bool checkPath();
     void fillPath(std::list<Node> nodePath);
     void fillPathVis();
@@ -174,14 +175,7 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
         this->grid = *gridMsg;
         if(map.getMap(gridMsg)) {
             gridSet = true;
-            if(taskSet){
-                if(replan()){
-                    publish();
-                }else if (!checkPath()){
-                    ROS_WARN_STREAM("Current path has collision! Interrupting");
-                    //todo: send empty path
-                }
-            }
+            if(taskSet) replan(checkPath());
         }else {
             gridSet = false;
             ROS_WARN_STREAM("Cannot set map!");
@@ -214,28 +208,67 @@ void Planner::getRobotPose() {
     this->odom.pose.pose.position.z = transform.transform.translation.z;
     this->odom.pose.pose.orientation = transform.transform.rotation;
 }
-bool Planner::replan(){
+//bool Planner::replan(){
+//    auto old_searchRes = searchRes;
+//    getRobotPose();
+//    if(!plan()) {
+//        ROS_ERROR_STREAM("Replanning error! Checking feasibility of previous path");
+//        return false;
+//    }else{
+//        if(searchRes.pathlength < old_searchRes.pathlength){
+//            searchRes = old_searchRes;
+//            return false;
+//        }else{
+//            if (searchRes.hppath->size() == 0) {
+//                ROS_WARN_STREAM("Replanning error! Resulted path is empty. Checking feasibility of previous path");
+//                return false;
+//            }
+//
+//
+//            auto nodePath = searchRes.hppath;
+//            fillPath(*nodePath);
+//            transformPath();
+//            fillPathVis();
+//            return true;
+//        }
+//    }
+//}
+
+void Planner::replan(bool isCurrentPathFeasible){
     auto old_searchRes = searchRes;
     getRobotPose();
-    if(!plan()) {
-        ROS_ERROR_STREAM("Replanning error! Checking feasibility of previous path");
-        return false;
-    }else{
-        if(searchRes.pathlength < old_searchRes.pathlength){
-            searchRes = old_searchRes;
-            return false;
-        }else{
-            if (searchRes.hppath->size() == 0) {
-                ROS_WARN_STREAM("Replanning error! Resulted path is empty. Checking feasibility of previous path");
-                return false;
-            }
 
-
+    bool planSuccess = plan();
+    if(!isCurrentPathFeasible){
+        if(!planSuccess) {
+            //Current path is wrong and replanning error
+            ROS_ERROR_STREAM("Replanning error! Sending empty path");
+            path.poses.clear();
+            vis_path.points.clear();
+            publish();
+        }else {
+            //Current path is wrong but replanning succeeded
             auto nodePath = searchRes.hppath;
             fillPath(*nodePath);
             transformPath();
             fillPathVis();
-            return true;
+            publish();
+        }
+    }else {
+        if (!planSuccess) {
+            //Current path is feasible but replanning error - something wrong
+            ROS_WARN_STREAM("Replanning error. Current path is feasible");
+        }else {
+            //Current path is feasible and replanning succeeded. Checking length of new path
+            if(searchRes.pathlength < old_searchRes.pathlength) {
+                //New path has less cost - update current path and send new one
+                searchRes = old_searchRes;
+                auto nodePath = searchRes.hppath;
+                fillPath(*nodePath);
+                transformPath();
+                fillPathVis();
+                publish();
+            }
         }
     }
 }
@@ -290,6 +323,7 @@ bool Planner::plan() {
 
 bool Planner::checkPath() {
     auto lppath = *searchRes.lppath;
+    if (lppath.size() == 0) return false;
     for(auto node : lppath){
         if(map.CellIsObstacle(node.i, node.j)) return false;
     }
