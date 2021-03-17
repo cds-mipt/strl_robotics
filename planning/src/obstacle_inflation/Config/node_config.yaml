@@ -1,5 +1,7 @@
 {
+  costmap_topic: "costmap",
   grid_topic: "fancy_grid",
   raw_grid_topic: "grid_map",
-  robot_size: 0.25
+  robot_size: 0.25,
+  log_level: 1
 }
