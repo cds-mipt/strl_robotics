@@ -1,8 +1,15 @@
 {
-  odom_topic: "odometry",
+  odom_topic: "fused_odom",
   task_topic: "move_base_simple/goal",
-  grid_topic: "occupancy/accumulated",
+  grid_topic: "fancy_grid",
   path_topic: "planning_node/trajectory",
   path_topic_vis: "path_visualization",
-  search_type: "theta"
+  search_type: "theta",
+  global_frame: "map",
+  base_frame: "base_link"
 }
+#Available planners are:  "bfs" - BFS
+#                         "dijkstra" - Dijkstra
+#                         "astar" - A*
+#                         "jp_search" - JP (JumpPoint)
+#                         "theta" - Theta*

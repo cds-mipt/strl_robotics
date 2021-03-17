@@ -43,7 +43,6 @@ private:
     visualization_msgs::Marker      vis_path;
 
     Map         map;
-    //Astar       search = Astar(1,1);
     SearchResult searchRes;
 
     ISearch* search = nullptr;
@@ -55,6 +54,8 @@ private:
     std::string pathTopicVis;
 
     std::string searchType;
+    std::string globalFrame;
+    std::string baseFrame;
 
     bool gridSet = false;
     bool taskSet = false;
@@ -63,8 +64,9 @@ public:
     Planner(tf2_ros::Buffer& _tfBuffer);
     void setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg);
     void setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg);
-    void setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg);
+//    void setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg);
 
+    void getRobotPose();
     bool plan();
     bool replan();
     bool checkPath();
@@ -89,6 +91,8 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
     nh.param<std::string>("/node_params/path_topic_vis", pathTopicVis, "some_path");
 
     nh.param<std::string>("/node_params/search_type", searchType, "dijkstra");
+    nh.param<std::string>("/node_params/global_frame", globalFrame, "map");
+    nh.param<std::string>("/node_params/base_frame", baseFrame, "base_link");
 
 
     vis_path.ns = "planning";
@@ -127,10 +131,10 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
                                                                                 &Planner::setGrid,
                                                                                 this);
 
-    odomSub                     = nh.subscribe<nav_msgs::Odometry>              (odomTopic,
-                                                                                50,
-                                                                                &Planner::setOdom,
-                                                                                this);
+//    odomSub                     = nh.subscribe<nav_msgs::Odometry>              (odomTopic,
+//                                                                                50,
+//                                                                                &Planner::setOdom,
+//                                                                                this);
 
     trajPub                     = nh.advertise<geometry_msgs::PoseArray>        (pathTopic,
                                                                                 50);
@@ -172,16 +176,15 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
             gridSet = true;
             if(taskSet){
                 if(replan()){
-                    if(checkPath()){
-                        publish();
-                    }else{
-                        ROS_ERROR_STREAM("Current path has collision! Interrupting");
-                    }
+                    publish();
+                }else if (!checkPath()){
+                    ROS_WARN_STREAM("Current path has collision! Interrupting");
+                    //todo: send empty path
                 }
             }
         }else {
-            ROS_WARN_STREAM("Cannot set map!");
             gridSet = false;
+            ROS_WARN_STREAM("Cannot set map!");
         }
     }else{
         gridSet = false;
@@ -191,31 +194,55 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
 
 }
 
-void Planner::setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg) {
-    this->odom = *odomMsg;
-    if(!gridSet) ROS_WARN_STREAM("No grid received! Cannot set odometry.");
+//void Planner::setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg) {
+//    this->odom = *odomMsg;
+//    if(!gridSet) ROS_WARN_STREAM("No grid received! Cannot set odometry.");
+//}
+
+void Planner::getRobotPose() {
+    geometry_msgs::TransformStamped transform;
+//    transform.transform.rotation.w
+    try {
+        transform = tfBuffer.lookupTransform(globalFrame, baseFrame, ros::Time(0));
+    }catch (tf2::TransformException &ex) {
+        ROS_WARN("%s", ex.what());
+    }
+    this->odom.header.frame_id = globalFrame;
+    this->odom.child_frame_id = baseFrame;
+    this->odom.pose.pose.position.x = transform.transform.translation.x;
+    this->odom.pose.pose.position.y = transform.transform.translation.y;
+    this->odom.pose.pose.position.z = transform.transform.translation.z;
+    this->odom.pose.pose.orientation = transform.transform.rotation;
 }
 bool Planner::replan(){
     auto old_searchRes = searchRes;
+    getRobotPose();
     if(!plan()) {
-        ROS_WARN_STREAM("Replanning error! Checking feasibility of previous path");
+        ROS_ERROR_STREAM("Replanning error! Checking feasibility of previous path");
         return false;
     }else{
         if(searchRes.pathlength < old_searchRes.pathlength){
             searchRes = old_searchRes;
+            return false;
         }else{
-            if (searchRes.hppath->size() == 0) return false;
+            if (searchRes.hppath->size() == 0) {
+                ROS_WARN_STREAM("Replanning error! Resulted path is empty. Checking feasibility of previous path");
+                return false;
+            }
+
 
             auto nodePath = searchRes.hppath;
             fillPath(*nodePath);
             transformPath();
             fillPathVis();
+            return true;
         }
     }
 }
 bool Planner::plan() {
     XmlLogger *logger = new XmlLogger("nope");
     const EnvironmentOptions options;
+    getRobotPose();
 
     auto transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goal.pose, goal.header.frame_id, grid.header.frame_id));
     map.setGoal(int(transformedGoal.position.y),
@@ -225,16 +252,16 @@ bool Planner::plan() {
     map.setStart(int(transformedOdom.position.y),
                  int(transformedOdom.position.x));
 
-    ROS_INFO_STREAM(map.start_i << "  " << map.start_j);
-    ROS_INFO_STREAM(map.goal_i << "  " << map.goal_j);
-//
+    ROS_INFO_STREAM("Start position is: " << map.start_i << "  " << map.start_j);
+    ROS_INFO_STREAM("Goal position is: " << map.goal_i << "  " << map.goal_j);
+
     if((map.start_j > map.width) || (map.start_i > map.height) || (map.start_j < 0) || (map.start_i < 0)){
-        ROS_WARN_STREAM("Wrong goal coordinates-1! Interrupting");
+        ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
         return false;
     }
 
     if((map.goal_j > map.width) || (map.goal_i > map.height) || (map.goal_j < 0) || (map.goal_i < 0)){
-        ROS_WARN_STREAM("Wrong goal coordinates-2! Interrupting");
+        ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
         return false;
     }
     if (map.CellIsObstacle(map.start_i, map.start_j)) {
@@ -310,11 +337,14 @@ void Planner::transformPath(){
     }
 
 
-    path.header.frame_id = odom.header.frame_id;
+//    path.header.frame_id = odom.header.frame_id;
+    path.header.frame_id = "map";
 }
 
 void Planner::publish(){
     path.header.stamp = ros::Time::now();
+    path.header.frame_id = "map";
+    vis_path.header.frame_id = "map";
     trajPub.publish(path);
     visTrajPub.publish(vis_path);
 }
