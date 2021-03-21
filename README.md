@@ -18,6 +18,11 @@ Occupancy grid в rtabmap представлена стандартными со
 **3. Перевод в систему координат base_link робота для одометрии.** 
 ---
 (Линар Абдразаков)<br/>
+Есть три основных систем координат:
+- map - система координат карты;
+- odom - система координат, относительно которой считается одометрия (совпадает с системой координат base_link при запуске одометрии);
+- base_link - система координат робота.
+В сообщениях одометрии хранится трансформация между двумя системами координат (поля frame_id и child_frame_id). Каждый метод одометрии имеет свои системы координат frame_id и child_frame_id, информация о которых не публикуется в топик /tf. Поэтому их нужно привести к общим системам координат так, чтобы frame_id = odom и child_frame_id = base_link. 
 Перевод одометрии в систему координат base_link происходит с использованием пакета [tf_transformer](odometry/odometry_fusion/tf_transformer), который автоматически запускается вместе с robot_localization.
 
 
@@ -33,7 +38,8 @@ Occupancy grid в rtabmap представлена стандартными со
 ---
 (Линар Абдразаков)<br/>
 Запуск методов одометрии и их комплексирования описан [здесь.](odometry)
-
+Комплексируются три вида одометрии: [визуальная](odometry/visual_odometry), [лидарная](odometry/lidar_odometry) и колесная.
+Перед комплексированием каждая одометрия приводится к системе координат base_link (frame_id=odom, child_frame_id=base_link).
 
 
 **6. О планировании движения к цели, заданной на карте** 
@@ -63,30 +69,30 @@ Occupancy grid в rtabmap представлена стандартными со
 **Пример вывода топика /status при питании робота от сети**
 
 ```
-header:\                              
-  seq: 28287\
-  stamp:\
-    secs: 1614184608\
-    nsecs: 173392658\
-  frame_id: ''\
-uptime: 28330379\
-ros_control_loop_freq: 9.9974492508\
-mcu_and_user_port_current: 0.82\
-left_driver_current: 0.0\
-right_driver_current: 0.0\
-battery_voltage: 26.88\
-left_driver_voltage: 0.0\
-right_driver_voltage: 0.0\
-left_driver_temp: 0.0\
-right_driver_temp: 0.0\
-left_motor_temp: 0.0\
-right_motor_temp: 0.0\
-capacity_estimate: 480\
-charge_estimate: 1.0\
-timeout: False\
-lockout: True\
-e_stop: True\
-ros_pause: False\
-no_battery: True\
-current_limit: False\
+header:                              
+  seq: 28287
+  stamp:
+    secs: 1614184608
+    nsecs: 173392658
+  frame_id: ''
+uptime: 28330379
+ros_control_loop_freq: 9.9974492508
+mcu_and_user_port_current: 0.82
+left_driver_current: 0.0
+right_driver_current: 0.0
+battery_voltage: 26.88
+left_driver_voltage: 0.0
+right_driver_voltage: 0.0
+left_driver_temp: 0.0
+right_driver_temp: 0.0
+left_motor_temp: 0.0
+right_motor_temp: 0.0
+capacity_estimate: 480
+charge_estimate: 1.0
+timeout: False
+lockout: True
+e_stop: True
+ros_pause: False
+no_battery: True
+current_limit: False
 ```
