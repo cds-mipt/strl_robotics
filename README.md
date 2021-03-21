@@ -24,7 +24,7 @@ Occupancy grid в rtabmap представлена стандартными со
 - base_link - система координат робота.
 <br/>
 В сообщениях одометрии хранится трансформация между двумя системами координат (поля frame_id и child_frame_id). Каждый метод одометрии имеет свои системы координат frame_id и child_frame_id, информация о которых не публикуется в топик /tf. Поэтому их нужно привести к общим системам координат так, чтобы frame_id = odom и child_frame_id = base_link. 
-Перевод одометрии в систему координат base_link происходит с использованием пакета [tf_transformer](odometry/odometry_fusion/tf_transformer), который автоматически запускается вместе с robot_localization.
+Перевод одометрии в систему координат base_link происходит с использованием пакета [tf_transformer](odometry/odometry_fusion/tf_transformer) , который автоматически запускается вместе с robot_localization.
 
 
 
