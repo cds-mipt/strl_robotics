@@ -40,8 +40,8 @@ Occupancy grid в rtabmap представлена стандартными со
 (Линар Абдразаков)<br/>
 Запуск методов одометрии и их комплексирования описан [здесь.](odometry) <br/>
 Комплексирование происходит трех видов одометрии: [визуальная](odometry/visual_odometry), [лидарная](odometry/lidar_odometry) и колесная. <br/>
-Перед комплексированием каждая одометрия приводится к системе координат base_link (frame_id=odom, child_frame_id=base_link). <br/>
-Изменить конфигурацию комплексирования можно в [файле](odometry/odometry_fusion/robot_localization/params/husky_mipt_odometry_fusion.yaml). Описание параметров конфигурации можно найти [здесь](http://docs.ros.org/en/melodic/api/robot_localization/html/state_estimation_nodes.html). 
+Перед комплексированием каждая одометрия приводится к системе координат base_link (frame_id=odom, child_frame_id=base_link).
+Изменить конфигурацию комплексирования можно в [данном файле](odometry/odometry_fusion/robot_localization/params/husky_mipt_odometry_fusion.yaml). Описание параметров конфигурации можно найти [здесь](http://docs.ros.org/en/melodic/api/robot_localization/html/state_estimation_nodes.html). 
 
 
 **6. О планировании движения к цели, заданной на карте** 
