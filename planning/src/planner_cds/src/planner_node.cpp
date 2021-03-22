@@ -213,18 +213,19 @@ void Planner::replan(bool isCurrentPathFeasible){
         if (!planSuccess) {
             //Current path is feasible but replanning error - something wrong
             ROS_WARN_STREAM("Replanning error. Current path is feasible");
-        }else {
-            //Current path is feasible and replanning succeeded. Checking length of new path
-            if(searchRes.pathlength < old_searchRes.pathlength) {
-                //New path has less cost - update current path and send new one
-                searchRes = old_searchRes;
-                auto nodePath = searchRes.hppath;
-                fillPath(*nodePath);
-                transformPath();
-                fillPathVis();
-                publish();
-            }
         }
+//        else {
+//            //Current path is feasible and replanning succeeded. Checking length of new path
+//            if(searchRes.pathlength < old_searchRes.pathlength) {
+//                //New path has less cost - update current path and send new one
+//                searchRes = old_searchRes;
+//                auto nodePath = searchRes.hppath;
+//                fillPath(*nodePath);
+//                transformPath();
+//                fillPathVis();
+//                publish();
+//            }
+//        }
     }
 }
 bool Planner::plan() {
