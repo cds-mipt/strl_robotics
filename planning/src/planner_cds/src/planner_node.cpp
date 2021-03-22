@@ -208,31 +208,7 @@ void Planner::getRobotPose() {
     this->odom.pose.pose.position.z = transform.transform.translation.z;
     this->odom.pose.pose.orientation = transform.transform.rotation;
 }
-//bool Planner::replan(){
-//    auto old_searchRes = searchRes;
-//    getRobotPose();
-//    if(!plan()) {
-//        ROS_ERROR_STREAM("Replanning error! Checking feasibility of previous path");
-//        return false;
-//    }else{
-//        if(searchRes.pathlength < old_searchRes.pathlength){
-//            searchRes = old_searchRes;
-//            return false;
-//        }else{
-//            if (searchRes.hppath->size() == 0) {
-//                ROS_WARN_STREAM("Replanning error! Resulted path is empty. Checking feasibility of previous path");
-//                return false;
-//            }
-//
-//
-//            auto nodePath = searchRes.hppath;
-//            fillPath(*nodePath);
-//            transformPath();
-//            fillPathVis();
-//            return true;
-//        }
-//    }
-//}
+
 
 void Planner::replan(bool isCurrentPathFeasible){
     auto old_searchRes = searchRes;
