@@ -14,24 +14,16 @@
 
 #include "planner_cds_core/mission.h"
 
+#include "planner_cds/utils.h"
+#include "planner_cds/const.h"
+
 #include <chrono>
-
-double yaw(geometry_msgs::Quaternion q){
-    double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
-    double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-    return std::atan2(siny_cosp, cosy_cosp);
-}
-
-template <typename T> int sgn(T val) {
-    return (T(0) < val) - (val < T(0));
-}
 
 
 class Planner{
 private:
     ros::Subscriber     taskSub;
     ros::Subscriber     gridSub;
-    ros::Subscriber     odomSub;
     ros::Publisher      trajPub;
     ros::Publisher      visTrajPub;
 
@@ -47,7 +39,7 @@ private:
 
     ISearch* search = nullptr;
 
-    std::string odomTopic;
+
     std::string taskTopic;
     std::string gridTopic;
     std::string pathTopic;
@@ -64,7 +56,6 @@ public:
     Planner(tf2_ros::Buffer& _tfBuffer);
     void setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg);
     void setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg);
-//    void setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg);
 
     void getRobotPose();
     bool plan();
@@ -85,7 +76,6 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
     ros::NodeHandle nh;
 
 
-    nh.param<std::string>("/node_params/odom_topic", odomTopic, "some_odom");
     nh.param<std::string>("/node_params/task_topic", taskTopic, "some_task");
     nh.param<std::string>("/node_params/grid_topic", gridTopic, "some_grid");
     nh.param<std::string>("/node_params/path_topic", pathTopic, "some_path");
@@ -132,11 +122,6 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
                                                                                 &Planner::setGrid,
                                                                                 this);
 
-//    odomSub                     = nh.subscribe<nav_msgs::Odometry>              (odomTopic,
-//                                                                                50,
-//                                                                                &Planner::setOdom,
-//                                                                                this);
-
     trajPub                     = nh.advertise<geometry_msgs::PoseArray>        (pathTopic,
                                                                                 50);
 
@@ -147,15 +132,15 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
 
     if (search)
         delete search;
-    if (searchType == "bfs")
+    if (searchType == PT_BFS)
         search = new BFS();
-    else if (searchType  == "dijkstra")
+    else if (searchType  == PT_DIJK)
         search = new Dijkstra();
-    else if (searchType  == "astar")
+    else if (searchType  == PT_ASTAR)
         search = new Astar(1, 1);
-    else if (searchType  == "jp_search")
+    else if (searchType  == PT_JP)
         search = new JP_Search(1, 1);
-    else if (searchType  == "theta")
+    else if (searchType  == PT_TH)
         search = new Theta(1, 1);
 }
 
@@ -188,14 +173,8 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
 
 }
 
-//void Planner::setOdom(const nav_msgs::Odometry::ConstPtr& odomMsg) {
-//    this->odom = *odomMsg;
-//    if(!gridSet) ROS_WARN_STREAM("No grid received! Cannot set odometry.");
-//}
-
 void Planner::getRobotPose() {
     geometry_msgs::TransformStamped transform;
-//    transform.transform.rotation.w
     try {
         transform = tfBuffer.lookupTransform(globalFrame, baseFrame, ros::Time(0));
     }catch (tf2::TransformException &ex) {
@@ -346,15 +325,13 @@ void Planner::transformPath(){
         path.poses[i] = point;
     }
 
-
-//    path.header.frame_id = odom.header.frame_id;
-    path.header.frame_id = "map";
+    path.header.frame_id = globalFrame;
 }
 
 void Planner::publish(){
     path.header.stamp = ros::Time::now();
-    path.header.frame_id = "map";
-    vis_path.header.frame_id = "map";
+    path.header.frame_id = globalFrame;
+    vis_path.header.frame_id = globalFrame;
     trajPub.publish(path);
     visTrajPub.publish(vis_path);
 }
