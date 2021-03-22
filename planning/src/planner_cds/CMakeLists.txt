@@ -212,6 +212,6 @@ include_directories(
 # catkin_add_nosetests(test)
 
 
-add_executable(planner_cds src/planner_node.cpp)
+add_executable(planner_cds src/planner_node.cpp include/planner_cds/utils.h  include/planner_cds/const.h)
 add_dependencies(planner_cds ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(planner_cds ${catkin_LIBRARIES})
