@@ -271,6 +271,7 @@ bool Planner::plan() {
     if (searchRes.hppath->size() == 0) return false;
 
     auto nodePath = searchRes.hppath;
+
     fillPath(*nodePath);
     transformPath();
     fillPathVis();
@@ -300,11 +301,13 @@ void Planner::fillPath(std::list<Node> nodePath){
     path.poses.clear();
     path.header.frame_id = grid.header.frame_id;
     geometry_msgs::Pose point;
+
     for (auto node : nodePath){
         point.position.x = node.j;
         point.position.y = node.i;
         path.poses.push_back(point);
     }
+    path.poses.erase(path.poses.begin());
 }
 void Planner::fillPathVis(){
     vis_path.points.clear();
