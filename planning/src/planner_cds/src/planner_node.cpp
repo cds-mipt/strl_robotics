@@ -65,6 +65,7 @@ public:
     void fillPath(std::list<Node> nodePath);
     void fillPathVis();
     void transformPath();
+    void transformPathBack();
     void publish();
     geometry_msgs::Pose transformPoseToTargetFrame(geometry_msgs::Pose poseIn, std::string poseFrame, std::string targetFrame);
     geometry_msgs::Pose rescaleToGrid(geometry_msgs::Pose Pose);
@@ -192,7 +193,7 @@ void Planner::getRobotPose() {
 void Planner::replan(bool isCurrentPathFeasible){
     auto old_searchRes = searchRes;
     getRobotPose();
-
+    ROS_INFO_STREAM("Current path is: " << isCurrentPathFeasible);
     bool planSuccess = plan();
     if(!isCurrentPathFeasible){
         if(!planSuccess) {
@@ -277,13 +278,22 @@ bool Planner::plan() {
     return true;
 }
 
+//bool Planner::checkPath() {
+//    auto lppath = *searchRes.lppath;
+//    if (lppath.size() == 0) return false;
+//    for(auto node : lppath){
+//        if(map.CellIsObstacle(node.i, node.j)) return false;
+//    }
+//    return true;
+//}
+
 bool Planner::checkPath() {
-    auto lppath = *searchRes.lppath;
-    if (lppath.size() == 0) return false;
-    for(auto node : lppath){
-        if(map.CellIsObstacle(node.i, node.j)) return false;
+    transformPathBack();
+    if (path.poses.size() == 0) {transformPath(); return false;}
+    for(auto point : path.poses){
+        if(map.CellIsObstacle(point.position.y, point.position.x)) {transformPath(); return false;}
     }
-    return true;
+    {transformPath(); return true;}
 }
 
 void Planner::fillPath(std::list<Node> nodePath){
@@ -307,21 +317,26 @@ void Planner::fillPathVis(){
 }
 
 void Planner::transformPath(){
-    geometry_msgs::TransformStamped transform;
-    try {
-        transform = tfBuffer.lookupTransform(path.header.frame_id, odom.header.frame_id, ros::Time(0));
-    }catch (tf2::TransformException &ex) {
-        ROS_WARN("%s", ex.what());
-        //return poseIn;
-    }
-    auto angle = yaw(transform.transform.rotation);
-    double angle_orig;
     geometry_msgs::Pose point;
     for(int i=0; i<path.poses.size(); ++i) {
         point = path.poses[i];
         point = rescaleFromGrid(point);
-        point = transformPoseToTargetFrame(point, path.header.frame_id, odom.header.frame_id);
+        point = transformPoseToTargetFrame(point, path.header.frame_id, globalFrame);
 
+
+        path.poses[i] = point;
+    }
+
+    path.header.frame_id = globalFrame;
+}
+
+void Planner::transformPathBack(){
+    geometry_msgs::Pose point;
+    for(int i=0; i<path.poses.size(); ++i) {
+        point = path.poses[i];
+        point = transformPoseToTargetFrame(point, path.header.frame_id, globalFrame);
+
+        point = rescaleToGrid(point);
 
         path.poses[i] = point;
     }

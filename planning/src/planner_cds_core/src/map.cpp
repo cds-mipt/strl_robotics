@@ -332,7 +332,7 @@ bool Map::getMap(const nav_msgs::OccupancyGrid::ConstPtr& grid){
     }
 
     for (int i = 0; i < grid->data.size(); i++){
-        Grid[int(i/width)][int(i%width)] = (grid->data[i] == -1 ? 0 : int(grid->data[i]>40));//todo: parameterize
+        Grid[int(i/width)][int(i%width)] = (grid->data[i] == -1 ? 0 : int(grid->data[i]>60));
     }
     return true;
 }
