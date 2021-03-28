@@ -1,12 +1,12 @@
 {
   odom_topic: "fused_odom",
   task_topic: "move_base_simple/goal",
-  grid_topic: "occupancy/accumulated",
+  grid_topic: "fancy_grid",
   path_topic: "trajectory",
   path_topic_vis: "path_visualization",
   search_type: "theta",
-  global_frame: "local_map",
-  base_frame: "isns_link"
+  global_frame: "map",
+  base_frame: "base_link"
 }
 #Available planners are:  "bfs" - BFS
 #                         "dijkstra" - Dijkstra

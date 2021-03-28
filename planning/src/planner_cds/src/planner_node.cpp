@@ -193,9 +193,9 @@ void Planner::getRobotPose() {
 void Planner::replan(bool isCurrentPathFeasible){
     auto old_searchRes = searchRes;
     getRobotPose();
-    ROS_INFO_STREAM("Current path is: " << isCurrentPathFeasible);
-    bool planSuccess = plan();
+
     if(!isCurrentPathFeasible){
+        bool planSuccess = plan();
         if(!planSuccess) {
             //Current path is wrong and replanning error
             ROS_ERROR_STREAM("Replanning error! Sending empty path");
@@ -210,11 +210,12 @@ void Planner::replan(bool isCurrentPathFeasible){
             fillPathVis();
             publish();
         }
-    }else {
-        if (!planSuccess) {
-            //Current path is feasible but replanning error - something wrong
-            ROS_WARN_STREAM("Replanning error. Current path is feasible");
-        }
+    }
+//    else {
+//        if (!planSuccess) {
+//            //Current path is feasible but replanning error - something wrong
+//            ROS_WARN_STREAM("Replanning error. Current path is feasible");
+//        }
 //        else {
 //            //Current path is feasible and replanning succeeded. Checking length of new path
 //            if(searchRes.pathlength < old_searchRes.pathlength) {
@@ -227,7 +228,7 @@ void Planner::replan(bool isCurrentPathFeasible){
 //                publish();
 //            }
 //        }
-    }
+//    }
 }
 bool Planner::plan() {
     XmlLogger *logger = new XmlLogger("nope");
@@ -279,15 +280,6 @@ bool Planner::plan() {
     return true;
 }
 
-//bool Planner::checkPath() {
-//    auto lppath = *searchRes.lppath;
-//    if (lppath.size() == 0) return false;
-//    for(auto node : lppath){
-//        if(map.CellIsObstacle(node.i, node.j)) return false;
-//    }
-//    return true;
-//}
-
 bool Planner::checkPath() {
     transformPathBack();
     if (path.poses.size() == 0) {transformPath(); return false;}
@@ -307,8 +299,8 @@ void Planner::fillPath(std::list<Node> nodePath){
         point.position.y = node.i;
         path.poses.push_back(point);
     }
-    path.poses.erase(path.poses.begin());
 }
+
 void Planner::fillPathVis(){
     vis_path.points.clear();
     vis_path.header.frame_id = path.header.frame_id;
@@ -350,6 +342,8 @@ void Planner::transformPathBack(){
 void Planner::publish(){
     path.header.stamp = ros::Time::now();
     path.header.frame_id = globalFrame;
+
+    path.poses.erase(path.poses.begin());
     vis_path.header.frame_id = globalFrame;
     trajPub.publish(path);
     visTrajPub.publish(vis_path);
