@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>husky_mobile02</name>
+  <name>path_following</name>
   <version>0.0.0</version>
-  <description>The husky_mobile02 package</description>
+  <description>The path following control package for a differential drive mobile robot</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
-  <maintainer email="ubuntu.msa@gmail.com">cont</maintainer>
+  <maintainer email="ubuntu.msa@gmail.com">Muhammad</maintainer>
 
 
   <!-- One license tag required, multiple allowed, one license per tag -->
@@ -19,18 +19,18 @@
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>rtp_msgs</build_depend>
   <build_depend>tf</build_depend>
+  <build_depend>tf2_ros</build_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
-  <build_export_depend>rtp_msgs</build_export_depend>
   <build_export_depend>tf</build_export_depend>
+  <build_export_depend>tf2_ros</build_export_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-  <exec_depend>rtp_msgs</exec_depend>
   <exec_depend>tf</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

@@ -35,16 +35,17 @@ def to_manipulator(pose):
     lc_coord = numpy.array([[lc.x], [lc.y], [lc.z]])
     T = [[0], [0], [0]]
     R_lc2mp = numpy.ones([[1, 0, 0],
-                             [0, 1, 0],
-                             [0, 0, 1]])
-    mp_coord = numpy.linalg.inv(R) @ (lc_coord - T)
+                          [0, 1, 0],
+                          [0, 0, 1]])
+    mp_coord = np.matmul(numpy.linalg.inv(R), (lc_coord - T))
     pose.position.x = mp_coord[0][0]
     pose.position.y = mp_coord[1][0]
     pose.position.z = mp_coord[2][0]
 
 def callback(data_l, data_r):
     #simetric objects
-    if data_l.object and data_r.object:
+    if data_l.objects and data_r.objects:
+        rospy.loginfo("good")
         bbox = data_l.objects[0].bbox
         time = data_l.header.stamp.secs
         buttons["left"] = {"seq": data_l.header.seq, "time": time, "xy": produce_center_point(bbox)}
@@ -52,15 +53,18 @@ def callback(data_l, data_r):
         bbox = data_r.objects[0].bbox
         time = data_r.header.stamp.secs
         buttons["right"] = {"seq": data_l.header.seq, "time": time, "xy": produce_center_point(bbox)}
-    elif not data_l.object:
+    elif not data_l.objects:
         rospy.loginfo("not l")
-    elif not data_r.object:
+    elif not data_r.objects:
         rospy.loginfo("not r")
 
 if __name__ == '__main__':
     rospy.init_node('xyz')
 
-    tss = ApproximateTimeSynchronizer([Subscriber('/zed_node/left/objects', ObjectArray), Subscriber('/zed_node/right/objects', ObjectArray)], queue_size=10, slop=0.05)
+    tss = ApproximateTimeSynchronizer([Subscriber('/zed_node/left/objects', ObjectArray), 
+				       Subscriber('/zed_node/right/objects', ObjectArray)], 
+                                       queue_size=10, 
+                                       slop=1)
     tss.registerCallback(callback)
     
     pub = rospy.Publisher('/zed_node/buttonPose', Pose, queue_size=10)
