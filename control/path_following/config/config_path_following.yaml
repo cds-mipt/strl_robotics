@@ -1,1 +1,12 @@
-
+odom_topic: 'odometry'
+path_topic: 'planning_node/trajectory'
+cmd_topic: 'cmd_vel'
+error_topic: 'errors_pub'
+draw_topic: 'draw_path_pub'
+global_frame: 'local_map'
+base_frame: 'isns_link'
+max_v: 0.7
+min_v: 0
+acc_v: 0.25
+max_w: 0.5
+acc_w: 0.2
