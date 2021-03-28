@@ -1,6 +1,5 @@
 /*
 This is a path following controller for a differential drive mobile robot 
-Made by Muhammad Alhaddad
 */
 #include "ros/ros.h"
 #include <geometry_msgs/Twist.h>
