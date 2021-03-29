@@ -28,6 +28,8 @@ RUN apt-get update && ${APT_INSTALL} \
     python3 \
     python3-setuptools \
     python3-pip \
+    
+RUN $PIP_INSTALL \
     cython \
     opencv-python \
     pillow \
