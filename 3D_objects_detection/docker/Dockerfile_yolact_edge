@@ -25,6 +25,7 @@ WORKDIR /home/${USER}
 RUN apt-get update && APT_INSTALL \
     nano \
     git \
+    python3 \
     python3-setuptools \
     python3-pip \
     cython \
@@ -42,7 +43,7 @@ WORKDIR yolact_edge
 
 #pytorch  
 RUN PIP_INSTALL torch==1.6.0 \
-    torchvision==0.7.0
+                torchvision==0.7.0
 
 #cleaning
 RUN apt-get clean && \
