@@ -6,7 +6,7 @@ ARG PIP_INSTALL="python3 -m pip --no-cache-dir install --upgrade --user"
 ARG GIT_CLONE="git clone --depth 10"
 
 #user settings
-ARG USER=yolact_edge
+ARG USER=docker
 ARG UID=1000
 ARG GID=1000
 ARG PW=user
@@ -22,13 +22,17 @@ WORKDIR /home/${USER}
 #torch2trt
 
 #tools
-RUN apt-get update && ${APT_INSTALL} \
+RUN apt-get update && $APT_INSTALL \
     nano \
     git \
     python3 \
     python3-setuptools \
-    python3-pip \
-    
+    python3-pip && \
+    pip3 install --upgrade pip \
+    python3-dev \
+    build-essential
+
+
 RUN $PIP_INSTALL \
     cython \
     opencv-python \
@@ -36,18 +40,20 @@ RUN $PIP_INSTALL \
     matplotlib \
     GitPython \
     termcolor \
-    tensorboard \
-    git+https://github.com/haotian-liu/cocoapi.git#"egg=pycocotools&subdirectory=PythonAPI"
+    tensorboard
 
-RUN ${GIT_CLONE} https://github.com/haotian-liu/yolact_edge.git
+RUN $PIP_INSTALL git+https://github.com/haotian-liu/cocoapi.git#"egg=pycocotools&subdirectory=PythonAPI"
+
+RUN $GIT_CLONE https://github.com/haotian-liu/yolact_edge.git
 
 WORKDIR yolact_edge
 
 #pytorch  
-RUN ${PIP_INSTALL} torch==1.6.0 \
-                   torchvision==0.7.0
+RUN $PIP_INSTALL torch==1.6.0 \
+                 torchvision==0.7.0
 
 #cleaning
 RUN apt-get clean && \
     apt-get autoremove && \
     rm -rf /var/lib/apt/lists/* /tmp/*
+
