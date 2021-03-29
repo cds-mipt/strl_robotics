@@ -22,7 +22,7 @@ WORKDIR /home/${USER}
 #torch2trt
 
 #tools
-RUN apt-get update && APT_INSTALL \
+RUN apt-get update && ${APT_INSTALL} \
     nano \
     git \
     python3 \
@@ -37,12 +37,12 @@ RUN apt-get update && APT_INSTALL \
     tensorboard \
     git+https://github.com/haotian-liu/cocoapi.git#"egg=pycocotools&subdirectory=PythonAPI"
 
-RUN GIT_CLONE https://github.com/haotian-liu/yolact_edge.git
+RUN ${GIT_CLONE} https://github.com/haotian-liu/yolact_edge.git
 
 WORKDIR yolact_edge
 
 #pytorch  
-RUN PIP_INSTALL torch==1.6.0 \
+RUN ${PIP_INSTALL} torch==1.6.0 \
                 torchvision==0.7.0
 
 #cleaning
