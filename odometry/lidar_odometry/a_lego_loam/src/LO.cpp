@@ -21,7 +21,7 @@ private:
   ros::Publisher pub_corner_last_;
   ros::Publisher pub_outlier_last_;
   ros::Publisher pub_diagnostics_;
-  tf::TransformBroadcaster tf_broad_;
+  // tf::TransformBroadcaster tf_broad_;
 
   diagnostic_msgs::DiagnosticArray diagnostic_msg_;
   ros::Timer timer_;
@@ -665,7 +665,8 @@ public:
 
           tf::Transform o2l;
           tf::poseMsgToTF(laser_odometry->pose.pose, o2l);
-          tf_broad_.sendTransform(tf::StampedTransform(o2l, laser_odometry->header.stamp, odom_frame_, laser_frame_));
+          // do not publish anything in tf
+          // tf_broad_.sendTransform(tf::StampedTransform(o2l, laser_odometry->header.stamp, odom_frame_, laser_frame_));
 
           surf_last_ = less_flat;
           corner_last_ = less_sharp;

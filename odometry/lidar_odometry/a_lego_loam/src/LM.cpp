@@ -32,7 +32,7 @@ private:
 
   ros::ServiceServer srv_save_map_;
 
-  tf::TransformBroadcaster tf_broadcaster_;
+  // tf::TransformBroadcaster tf_broadcaster_;
 
   NonlinearFactorGraph gtSAMgraph_;
   Values init_estimate_;
@@ -349,7 +349,8 @@ public:
     tf::Transform tf_m2o;
     tf_m2o.setOrigin(tf::Vector3(t_map2odom_.x(), t_map2odom_.y(), t_map2odom_.z()));
     tf_m2o.setRotation(tf::Quaternion(q_map2odom_.x(), q_map2odom_.y(), q_map2odom_.z(), q_map2odom_.w()));
-    tf_broadcaster_.sendTransform(tf::StampedTransform(tf_m2o, msg->header.stamp, map_frame_, odom_frame_));
+    // do not publish anything in tf
+    // tf_broadcaster_.sendTransform(tf::StampedTransform(tf_m2o, msg->header.stamp, map_frame_, odom_frame_));
   }
 
   void transformAssociateToMap()
