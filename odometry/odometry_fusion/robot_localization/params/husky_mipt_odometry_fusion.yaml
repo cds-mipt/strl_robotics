@@ -1,5 +1,5 @@
 frequency: 10
-publish_tf: false
+publish_tf: true
 sensor_timeout: 0.15
 two_d_mode: false
 transform_time_offset: 0.0
@@ -21,11 +21,11 @@ odom0_config: [true,  true,  true,
                false, false, false,
                false, false, false,
                false, false, false]
-odom0_differential: true
-odom0_relative: false
+odom0_differential: false
+odom0_relative: true
 odom0_queue_size: 2
 odom0_nodelay: false
-odom0_pose_rejection_threshold: 5
+#odom0_pose_rejection_threshold: 5
 
 # configuration for vision odometry
 odom1: /visual_odom
@@ -52,6 +52,8 @@ odom2_differential: true
 odom2_relative: false
 odom2_queue_size: 2
 odom2_nodelay: false
+#odom2_pose_rejection_threshold: 5
+
 
 
 #imu0: /imu/data
@@ -80,9 +82,9 @@ deceleration_limits: [6.0, 6.0, 6.0, 12.0, 12.0, 12.0]
 
 dynamic_process_noise_covariance: true
 
-process_noise_covariance: [0.01, 0,    0,    0,      0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
-                           0,    0.01, 0,    0,      0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
-                           0,    0,    0.03, 0,      0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+process_noise_covariance: [0.001, 0,    0,    0,      0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                           0,    0.001, 0,    0,      0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                           0,    0,    0.001, 0,      0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                            0,    0,    0,    0.0015, 0,      0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
                            0,    0,    0,    0,      0.0015, 0,      0,     0,     0,    0,    0,    0,    0,    0,    0,
                            0,    0,    0,    0,      0,      0.005, 0,     0,     0,    0,    0,    0,    0,    0,    0,
