@@ -54,11 +54,8 @@ geometry_msgs::Pose2D qd[100],err;
 geometry_msgs::Twist tw_msg;
 
 // declare topics
-std::string odom_topic;
 std::string path_topic;
 std::string cmd_topic;
-std::string error_topic;
-std::string draw_topic;
 std::string global_frame;
 std::string base_frame;
 
@@ -262,11 +259,8 @@ double sat_linear_velocity(double max , double min ,double accel, double v_ref ,
 // Initialize config parameters
 void Initialize_parameters(ros::NodeHandle n)
 {
-    n.getParam("odom_topic", odom_topic);
     n.getParam("path_topic", path_topic);
     n.getParam("cmd_topic" ,  cmd_topic);
-    n.getParam("error_topic", error_topic);
-    n.getParam("draw_topic" ,  draw_topic);
     n.getParam("global_frame" ,  global_frame);
     n.getParam("base_frame" ,  base_frame);
 
@@ -289,8 +283,6 @@ int main(int argc, char **argv) {
 
     // Define the publishers and sunscribers
     cmd_publish         = n.advertise<geometry_msgs::Twist>    (cmd_topic, 1);
-    desired_traj_pub    = n.advertise<geometry_msgs::Pose2D>   (draw_topic,5);
-    errors_pub          = n.advertise<geometry_msgs::Pose2D>   (error_topic,1000);
     traje_subscriber    = n.subscribe                          (path_topic,1 , traj_back);
 
     tf2_ros::Buffer tfBuffer;
