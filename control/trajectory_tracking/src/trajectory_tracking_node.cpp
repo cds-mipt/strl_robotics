@@ -57,13 +57,9 @@ visualization_msgs::Marker line_strip;
 
 
 // declare Publishers and Subscribers
-ros::Publisher   desired_traj_pub;
 ros::Publisher   cmd_publish;
-ros::Publisher   errors_pub;
 ros::Publisher   marker_pub;
-ros::Subscriber  odom_subscriber;
 ros::Subscriber  traje_subscriber;
-ros::Subscriber  number_path;
 
 // declare topics
 std::string odom_topic;
@@ -383,11 +379,8 @@ void stop_cmd()
 // Initialize config parameters
 void Initialize_parameters(ros::NodeHandle n)
 {
-    n.getParam("odom_topic",    odom_topic);
     n.getParam("path_topic",    path_topic);
     n.getParam("cmd_topic" ,    cmd_topic);
-    n.getParam("error_topic",   error_topic);
-    n.getParam("draw_topic" ,   draw_topic);
     n.getParam("global_frame" , global_frame);
     n.getParam("base_frame" ,   base_frame);
 
@@ -406,8 +399,6 @@ int main(int argc, char **argv) {
 
     // Define the publishers and sunscribers
     cmd_publish         = n.advertise<geometry_msgs::Twist>    (cmd_topic, 1);
-    desired_traj_pub    = n.advertise<geometry_msgs::Pose2D>   (draw_topic,5);
-    errors_pub          = n.advertise<geometry_msgs::Pose2D>   (error_topic,1000);
     traje_subscriber    = n.subscribe                          (path_topic,1 , traj_back);
     marker_pub          = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
 
