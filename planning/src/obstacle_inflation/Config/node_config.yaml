@@ -1,8 +1,8 @@
 {
   costmap_topic: "costmap",
   grid_topic: "fancy_grid",
-  raw_grid_topic: "grid_map",
+  raw_grid_topic: "rtabmap/grid_map",
   robot_size: 0.5,
   safe_size: 0.6,
-  log_level: 1
+  log_level: 0 #Either 0 or 1 for empty log and full log respectively
 }

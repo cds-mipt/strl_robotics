@@ -59,7 +59,6 @@ public:
 
     void getRobotPose();
     bool plan();
-    bool replan();
     void replan(bool isCurrentPathFeasible);
     bool checkPath();
     void fillPath(std::list<Node> nodePath);
@@ -193,8 +192,8 @@ void Planner::getRobotPose() {
 void Planner::replan(bool isCurrentPathFeasible){
     auto old_searchRes = searchRes;
     getRobotPose();
-
     if(!isCurrentPathFeasible){
+        ROS_INFO_STREAM("Replanning");
         bool planSuccess = plan();
         if(!planSuccess) {
             //Current path is wrong and replanning error
@@ -204,6 +203,7 @@ void Planner::replan(bool isCurrentPathFeasible){
             publish();
         }else {
             //Current path is wrong but replanning succeeded
+            ROS_INFO_STREAM("Replanning succeeded! Sending new path");
             auto nodePath = searchRes.hppath;
             fillPath(*nodePath);
             transformPath();
@@ -211,24 +211,6 @@ void Planner::replan(bool isCurrentPathFeasible){
             publish();
         }
     }
-//    else {
-//        if (!planSuccess) {
-//            //Current path is feasible but replanning error - something wrong
-//            ROS_WARN_STREAM("Replanning error. Current path is feasible");
-//        }
-//        else {
-//            //Current path is feasible and replanning succeeded. Checking length of new path
-//            if(searchRes.pathlength < old_searchRes.pathlength) {
-//                //New path has less cost - update current path and send new one
-//                searchRes = old_searchRes;
-//                auto nodePath = searchRes.hppath;
-//                fillPath(*nodePath);
-//                transformPath();
-//                fillPathVis();
-//                publish();
-//            }
-//        }
-//    }
 }
 bool Planner::plan() {
     XmlLogger *logger = new XmlLogger("nope");
@@ -265,9 +247,9 @@ bool Planner::plan() {
         return false;
     }
 
-
+    ROS_INFO_STREAM("Starting search");
     searchRes = search->startSearch(logger, map, options);
-    std::cout << "Planning time: " << searchRes.time << std::endl;
+    ROS_INFO_STREAM("Planning time: " << searchRes.time);
 
     if (searchRes.hppath->size() == 0) return false;
 
@@ -282,9 +264,10 @@ bool Planner::plan() {
 
 bool Planner::checkPath() {
     transformPathBack();
-    if (path.poses.size() == 0) {transformPath(); return false;}
+    if (path.poses.size() == 0) {return false;}
     for(auto point : path.poses){
-        if(map.CellIsObstacle(point.position.y, point.position.x)) {transformPath(); return false;}
+        if(grid.data[point.position.y*grid.info.width + point.position.x] > 60) {transformPath(); return false;}
+//        if(map.CellIsObstacle(point.position.y, point.position.x)) {transformPath(); return false;}
     }
     {transformPath(); return true;}
 }
@@ -343,7 +326,7 @@ void Planner::publish(){
     path.header.stamp = ros::Time::now();
     path.header.frame_id = globalFrame;
 
-    path.poses.erase(path.poses.begin());
+    if(path.poses.size() != 0) path.poses.erase(path.poses.begin());
     vis_path.header.frame_id = globalFrame;
     trajPub.publish(path);
     visTrajPub.publish(vis_path);

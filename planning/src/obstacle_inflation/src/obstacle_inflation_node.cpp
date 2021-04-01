@@ -75,7 +75,7 @@ void ObstInf::inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
         map.setCell(int(i % gridMsg->info.width), int(i / gridMsg->info.width), gridMsg->data[i] > 0);
     }
 
-    map.computeDistances();//todo: publish distance map
+    map.computeDistances();
 
     double robotCellSize = robot_size / grid.info.resolution;
     double safeCellSize = safe_size / grid.info.resolution;
@@ -91,13 +91,13 @@ void ObstInf::inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
     for (int y = 0; y < map.getHeight(); ++y) {
         for (int x = 0; x < map.getWidth(); ++x) {
             if (map.getDistance(x, y) < robotCellSize && map.getDistance(x, y) > 0) {
-                costmap.data[y * grid.info.width + x] = int(100 - map.getDistance(x, y) * 20 / robotCellSize);
+                costmap.data[y * grid.info.width + x] = char(100 - map.getDistance(x, y) * 20 / robotCellSize);
 
             }else if (map.getDistance(x, y) < safeCellSize && map.getDistance(x, y) > robotCellSize){
-                costmap.data[y * grid.info.width + x] = int(80 - (map.getDistance(x, y) - robotCellSize) * 30 / (robotCellSize - safeCellSize));
+                costmap.data[y * grid.info.width + x] = char(80 - (map.getDistance(x, y) - robotCellSize) * 30 / (robotCellSize - safeCellSize));
 
             }else if(map.getDistance(x, y) > safeCellSize){
-                costmap.data[y * grid.info.width + x] = int(50*exp(-(map.getDistance(x, y) - safeCellSize)));
+                costmap.data[y * grid.info.width + x] = char(50*exp(-(map.getDistance(x, y) - safeCellSize)));
             }
         }
     }

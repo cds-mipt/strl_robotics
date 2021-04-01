@@ -4,7 +4,10 @@
 
     <rosparam command="load" file="$(dirname)/../Config/node_config.yaml" ns = "node_params"/>
     <include file="$(find obstacle_inflation)/launch/obstacle_inflator.launch" />
-    <!-- <include file="$(find husky_mobile02)/launch/control.launch" /> -->
-	<include file="$(find trajectory_tracking)/launch/trajectory_tracking.launch" />
+    
+	<!-- <include file="$(find trajectory_tracking)/launch/trajectory_tracking.launch" /> -->
+	<include file="$(find path_following)/launch/path_following.launch" />
+	
+	
     <node pkg="planner_cds" name="planner_cds" type="planner_cds" output="screen"/>
 </launch>
