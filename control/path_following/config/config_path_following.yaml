@@ -1,7 +1,7 @@
-path_topic: 'planning_node/trajectory'
+path_topic: 'trajectory'
 cmd_topic: 'cmd_vel'
-global_frame: 'local_map'
-base_frame: 'isns_link'
+global_frame: 'map'
+base_frame: 'base_link'
 max_v: 0.7
 min_v: 0
 acc_v: 0.1
