@@ -4,6 +4,6 @@ global_frame: 'local_map'
 base_frame: 'isns_link'
 max_v: 0.7
 min_v: 0
-acc_v: 0.25
-max_w: 0.5
+acc_v: 0.1
+max_w: 0.2
 acc_w: 0.2
