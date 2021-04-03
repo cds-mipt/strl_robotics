@@ -21,9 +21,10 @@ double distance_error=0 , angle_error=0 , old_angle_err=0;
 double x_planning[100] , y_planning[100];
 uint32_t size_path=0 , old_size_path=0;
 bool path_changed=false, path_stored=false;
+int count_path=0;
 
 // declare condition parametrs
-double  distance_stop=0.25;
+double  distance_stop=0.25 , d_stop=0 , a_stop=0;
 
 // declare odometry parameters
 double odom_x, odom_y, odom_theta;
@@ -81,22 +82,25 @@ double get_yaw(geometry_msgs::Quaternion q);
 void traj_back(const geometry_msgs::PoseArray msg) 
 {
    size_path = msg.poses.size();
+   
    if(size_path!=0)
    {
        path_changed=true;
-       ROS_INFO("Path CHANGED [%i]", 0);
-       ROS_INFO("  THE VALUES [%i]", 0);
        for (j=0; j<size_path ; j++)
        {   
            x_planning[j]=msg.poses[j].position.x;
            y_planning[j]=msg.poses[j].position.y;
            qd[j].x=x_planning[j];
            qd[j].y=y_planning[j];
-           ROS_INFO("j,  x , y [%i ,%f , %f]" , j , qd[j].x, qd[j].y);
+        //   ROS_INFO("j,  x , y [%i ,%f , %f]" , j , qd[j].x, qd[j].y);
        }
        path_stored=true;
-       ROS_INFO("Path Stored [%i]", 0);
        old_size_path=size_path;
+   }
+   else
+   {
+      // ROS_INFO("Size _path [%i]", size_path);
+       ROS_WARN("There is no Path");
    }
 }
 
@@ -106,8 +110,9 @@ void check_path()
 {
     if(path_changed)
     {
+        count_path++;
         k_v=0;
-        ROS_INFO("There is a New Path");
+        ROS_INFO("MOTION MODE - Path CHANGED [%i]", count_path);
         path_changed=false;
         stop_mode_ind = false;
     }
@@ -127,18 +132,24 @@ void get_errors()
 // Linear Speed Controller
 void lon_control()
 {
-    ROS_INFO("Motion Mode - Errors Angle and Distance [%i , %i, , %f , %f]" ,k_v , old_size_path, angle_error , distance_error);
+   // ROS_INFO("Motion Mode - Errors Angle and Distance [%i , %i, , %f , %f]" ,k_v , old_size_path, angle_error , distance_error);
     if(path_stored && k_v<old_size_path)
     {
-        if(abs(angle_error)<=0.15)
+        if(abs(angle_error)<=0.2)
         {
             v_current = sat_linear_velocity(max_v,min_v,acc_v ,distance_error, v_old);
             tw_msg.linear.x=v_current;
             v_old=v_current;
         }
-        else if (abs(angle_error)>0.15)
+        else if (abs(angle_error)>0.2 && k_v==0)
         {
             v_current = 0;
+            tw_msg.linear.x=v_current;
+            v_old=v_current;
+        }
+        else if (abs(angle_error)>0.2 && k_v>0)
+        {
+            v_current = sat_linear_velocity(0.15,min_v,acc_v ,distance_error, v_old);;
             tw_msg.linear.x=v_current;
             v_old=v_current;
         }
@@ -163,16 +174,19 @@ void lat_control()
 // Stop Mode
 void stop_mode()
 {
-    if (path_stored && k_v==old_size_path-1 && distance_error < 0.25 && abs(angle_error)<0.25)
+    if (old_size_path > 0)
     {
-        if (!stop_mode_ind)
-        {
-            ROS_INFO("STOP Mode");
-        }
-        stop_mode_ind=true;
-        tw_msg.angular.z=0;
+        d_stop = sqrt(pow((qd[old_size_path-1].x-odom_x), 2) + pow((qd[old_size_path-1].y-odom_y), 2));
+    if (d_stop<0.2 && !stop_mode_ind)
+    {
+        stop_mode_ind = true;
         tw_msg.linear.x=0;
+        tw_msg.angular.z=0;
+        count_path =0;
+        ROS_INFO("STOP MODE");
     }
+    }
+    
 }
 
 
@@ -235,7 +249,7 @@ double sat_linear_velocity(double max , double min ,double accel, double v_ref ,
     }
     else if(v_cmd<0)
     {
-        v_cmd = old_velocity -0.4*dt;
+        v_cmd = old_velocity -0.2*dt;
     }
     else
     {
@@ -292,7 +306,7 @@ int main(int argc, char **argv) {
 
     
 
-    ROS_INFO("Start Control Node");
+    ROS_INFO("Start Path Following Node");
 
     while (ros::ok()) {
 
@@ -325,8 +339,20 @@ int main(int argc, char **argv) {
     }
 
     stop_mode();
+
+    if (size_path!=0)
+    {
+        cmd_publish.publish(tw_msg);
+    }
+    else
+    {
+        tw_msg.linear.x=0;
+        tw_msg.angular.z=0;
+        cmd_publish.publish(tw_msg);
+
+    }
     
-    cmd_publish.publish(tw_msg);
+    
     ros::spinOnce();
     loop_rate.sleep();
     }
