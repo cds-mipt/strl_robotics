@@ -10,7 +10,7 @@
   <arg name="image_topic" default="image_rect_color" />
   <arg name="objects_topic" default="objects" />
 
-  <arg name="play" default="true" />
+  <arg name="play" default="false" />
   <arg name="bag" default="/home/docker_solo/catkin_ws/src/solov2/lift_project/30-26_3_sec.bag" />
 
   <group ns="$(arg camera_ns_left)">
