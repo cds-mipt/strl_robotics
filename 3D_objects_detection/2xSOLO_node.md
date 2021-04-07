@@ -13,11 +13,12 @@ xyz_with_filter.py(Pose)
 - ./docker/latest/into.sh 
 - cd Repos/solov2_utils (терминал 2)
 - docker cp camera_objects_msgs solo:/home/docker_solo/catkin_ws/src/
-- сделать source /opt/ros/melodic/setup.bash
-- сделать catkin_make (терминал 1)
-- сделать source devel/setup.bash;
+- source /opt/ros/melodic/setup.bash (терминал 1)
+- cd catkin_ws
+- catkin_make 
+- source devel/setup.bash;
 - [подключаться к докеру можно /docker/latest/into.sh, к каждому заново надо делать source]
-- cd ~/catkin_ws/src/solov2/solo_ros/launch/
+- cd src/solov2/solo_ros/launch/
 - roslaunch test.launch
           
 
