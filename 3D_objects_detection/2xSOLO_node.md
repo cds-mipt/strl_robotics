@@ -17,7 +17,8 @@ xyz_with_filter.py(Pose)
 - сделать catkin_make (терминал 1)
 - сделать source devel/setup.bash;
 - [подключаться к докеру можно /docker/latest/into.sh, к каждому заново надо делать source]
-- roslaunch ~/catkin_ws/src/solov2/solo_ros/launch
+- cd ~/catkin_ws/src/solov2/solo_ros/launch/
+- roslaunch test.launch
           
 
 
