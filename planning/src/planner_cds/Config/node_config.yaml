@@ -1,5 +1,4 @@
 {
-  odom_topic: "fused_odom",
   task_topic: "move_base_simple/goal",
   grid_topic: "occupancy/accumulated",
   path_topic: "trajectory",
