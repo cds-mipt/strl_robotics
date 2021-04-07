@@ -33,19 +33,19 @@ def produce_center_point(roi):
 def to_manipulator(pose):
     lc = pose.position
     lc_coord = numpy.array([[lc.x], [lc.y], [lc.z]])
-    T = [[0], [0], [0]]
-    R_lc2mp = numpy.ones([[1, 0, 0],
-                          [0, 1, 0],
-                          [0, 0, 1]])
-    mp_coord = np.matmul(numpy.linalg.inv(R), (lc_coord - T))
-    pose.position.x = mp_coord[0][0]
-    pose.position.y = mp_coord[1][0]
-    pose.position.z = mp_coord[2][0]
+    T = [-0.2388, -0.06, 0.75]
+    R_cl2b = numpy.array([[0, 0, 1],
+                           [-1, 0, 0],
+                           [0, -1, 0]])
+    mp_coord = numpy.matmul(R_cl2b, lc_coord)
+    pose.position.x = mp_coord[0][0] + T[0]
+    pose.position.y = mp_coord[1][0] + T[1]
+    pose.position.z = mp_coord[2][0] + T[2]
+    return pose
 
 def callback(data_l, data_r):
     #simetric objects
     if data_l.objects and data_r.objects:
-        rospy.loginfo("good")
         bbox = data_l.objects[0].bbox
         time = data_l.header.stamp.secs
         buttons["left"] = {"seq": data_l.header.seq, "time": time, "xy": produce_center_point(bbox)}
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         if not buttons["left"] or not buttons["right"]:
             continue
         else:
-            rospy.loginfo(buttons)
+            #rospy.loginfo(buttons)
                 # position float, quant - normalized
                 #by left camera
                 # with rect
@@ -88,6 +88,10 @@ if __name__ == '__main__':
             pose.position.x = round(float((buttons["left"]["xy"][0] - c_x) * Z / fx), 3)
             pose.position.y = round(float((buttons["left"]["xy"][1] - c_y) * Z / fy), 3)
             pose.position.z = Z
+            print "cl", pose.position.x, pose.position.y, pose.position.z
+            pose_in_baselink = to_manipulator(pose)
+            print "b", pose.position.x, pose.position.y, pose.position.z
+            print "-----"
             pub.publish(pose)
 
             buttons["left"] = None

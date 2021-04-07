@@ -3,7 +3,7 @@
   <!-- Параметры модели -->
   <arg name="config" default="/home/docker_solo/catkin_ws/src/solov2/lift_project/solov2_light.py" />
   <arg name="checkpoint" default="/home/docker_solo/catkin_ws/src/solov2/lift_project/epoch_12.pth" />
-  <arg name="treshold" default="0.5" />
+  <arg name="treshold" default="0.3" />
 
   <!-- Настройка пространства имен камеры -->
   <arg name="camera_ns_left" default="/zed_node/left/" />
@@ -11,7 +11,7 @@
   <arg name="image_topic" default="image_rect_color" />
   <arg name="objects_topic" default="objects" />
 
-  <arg name="play" default="true" />
+  <arg name="play" default="false" />
   <arg name="bag" default="/home/docker_solo/catkin_ws/src/solov2/lift_project/30-26_3_sec.bag" />
 
   <group ns="$(arg camera_ns_left)">
@@ -26,7 +26,7 @@
     </node>
   </group>
 
-
+  
   <group ns="$(arg camera_ns_right)">
     <remap from="image" to="$(arg image_topic)" />
     <remap from="objects" to="$(arg objects_topic)" />
@@ -38,7 +38,10 @@
       <param name="shm_size" value="50M" />
     </node>
   </group>
-
+ 
+  <node pkg="solo_ros" type="xyz_with_filter.py" name="xyz" output="screen">
+  </node>
+  
   <group if="$(arg play)">
     <node pkg="rosbag" type="play" name="player" args="$(arg bag) --pause --loop" output="screen" />
   </group>
