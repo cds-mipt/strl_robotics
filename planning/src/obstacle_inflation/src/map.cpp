@@ -121,6 +121,7 @@ void Map::dt(float *image)
 //  float *f = new float[std::max(_width, _height)];
   float *f = new float[_height];
   // transform along columns
+
   for (int x = 0; x < _width; x++)
   {
     for (int y = 0; y < _height; y++)
@@ -129,14 +130,15 @@ void Map::dt(float *image)
     }
 
     float *d = dt1(f, _height);
-    
+
 	for (int y = 0; y < _height; y++) {
       image[x + y * _width] = d[y];
     }
     delete [] d;
   }
 
-  delete f;
+
+  delete [] f;
   f = new float[_width];
   // transform along rows
 
@@ -147,7 +149,9 @@ void Map::dt(float *image)
 	{
       f[x] = image[x + y * _width];
     }
+
     float *d = dt1(f, _width);
+
     for (int x = 0; x < _width; x++)
 	{
       image[x + y * _width] = d[x];

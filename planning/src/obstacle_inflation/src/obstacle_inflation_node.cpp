@@ -71,6 +71,7 @@ void ObstInf::inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
     if(log_level) ROS_INFO_STREAM("Received grid. Inflating");
     map.setWidth(gridMsg->info.width);
     map.setHeight(gridMsg->info.height);
+    std::cout << "Width: " << gridMsg->info.width << "\t Height: " << gridMsg->info.height << "\n";
     for (int i = 0; i < gridMsg->data.size(); i++) {
         map.setCell(int(i % gridMsg->info.width), int(i / gridMsg->info.width), gridMsg->data[i] > 0);
     }
@@ -83,7 +84,7 @@ void ObstInf::inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
     for (int y = 0; y < map.getHeight(); ++y) {
         for (int x = 0; x < map.getWidth(); ++x) {
             if (map.getDistance(x, y) < robotCellSize && map.getDistance(x, y) > 0) {
-                grid.data[y * grid.info.width + x] = 100;
+                grid.data[y * map.getWidth() + x] = 100;
             }
         }
     }
