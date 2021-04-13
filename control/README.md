@@ -18,10 +18,11 @@
 * control_method: указывает на выбранный метод решения задачи слежения за референсной траекторией (Trajectory tracking problem):
 
     (1)- первый нелинейный метод по Ляпунову. Исползуется по умолчению. Показывает найлучшие результаты.
+    Из статьи: Kanayama, Y. Kimura, F. Miyazaki and T. Noguchi, "A stable tracking control method for an autonomous mobile robot," Proceedings., IEEE International  Conference on Robotics and Automation, Cincinnati, OH, USA, 1990, pp. 384-389 vol.1.
     
     (2)- второй нелинейный метод по Ляпунову.
-    
-    (3)- линейный метод.
+    Из статьи: Felipe N. Martins, Wanderley C. Celeste, Ricardo Carelli, Mário Sarcinelli-Filho, Teodiano F. Bastos-Filho, "An adaptive dynamic controller for autonomous mobile robot trajectory tracking", Control Engineering Practice, Volume 16, Issue 11,2008,Pages 1354-1363.
+    (3)- линейный метод. Из книги Gregor Klancar Andrej Zdesar Saso Blazic Igor Skrjanc, "Wheeled Mobile Robotics", Elsevier, 2017. Страница номер 101.
  * path_topic - топик, в котором публикуется путь от планировщика. 
  * cmd_topic - топик, в котором модуль управления (control) публикует команды управления.
  
