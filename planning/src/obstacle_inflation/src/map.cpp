@@ -179,25 +179,17 @@ void Map::computeDistances()
 
 	dt(image);
 
-	std::ofstream output;
-	output.open("/home/vlad/lab_ws/src/obstacle_inflation/output/test.txt");
-
 	for (int y = 0 ; y < _height; ++y)
 	{
 		for (int x = 0 ; x < _width; ++x)
 		{
-			//_distances[x][_height - y - 1] = sqrt(image[x + y * _width]);
             _distances[x][y] = sqrt(image[x + y * _width]);
-
-			output << sqrt(_distances[x][y]) << " ";
-			//std::cout << sqrt(_distances[i][j]) << " ";
 		}
-		//std::cout << "\n";
-		output << "\n";
 	}
 
-	output.close();
 	delete image;
+
+
 }
 
 double Map::getDistance(int x, int y) const

@@ -9,6 +9,7 @@ private:
     double **_distances{nullptr};
     void dt(float *image);
     float *dt1(float *f, int n);
+    bool b = true;
 public:
     Map(/* args */);
     Map(unsigned int width, unsigned int height);
