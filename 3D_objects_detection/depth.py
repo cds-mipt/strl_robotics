@@ -26,14 +26,15 @@ def produce_center_point(roi):
 def to_manipulator(pose):
     lc = pose.position
     lc_coord = numpy.array([[lc.x], [lc.y], [lc.z]])
-    T = [[0], [0], [0]]
-    R_lc2mp = numpy.ones([[1, 0, 0],
-                          [0, 1, 0],
-                          [0, 0, 1]])
-    mp_coord = numpy.matmul(numpy.linalg.inv(R), (lc_coord - T))
-    pose.position.x = mp_coord[0][0]
-    pose.position.y = mp_coord[1][0]
-    pose.position.z = mp_coord[2][0]
+    T = [-0.2388, -0.06, 0.75]
+    R_cl2b = numpy.array([[0, 0, 1],
+                           [-1, 0, 0],
+                           [0, -1, 0]])
+    mp_coord = numpy.matmul(R_cl2b, lc_coord)
+    pose.position.x = mp_coord[0][0] + T[0]
+    pose.position.y = mp_coord[1][0] + T[1]
+    pose.position.z = mp_coord[2][0] + T[2]
+    return pose
 
 def callback(data_l, depth_l):
     if data_l.objects:
