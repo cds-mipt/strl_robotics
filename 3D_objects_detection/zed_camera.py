@@ -88,7 +88,11 @@ def normalize(self):
     a, b, c = x / numpy.linalg.norm(x)
     return Pose(position=Point(a, b, c))
 
+def as_numpy(self):
+    return numpy.array([self.position.x, self.position.y, self.position.x])
+
 setattr(Pose, '__sub__', __sub__)
+setattr(Pose, 'as_numpy', as_numpy)
 setattr(Pose, 'normalize', normalize)
 
 def make_surface(main_pose, pose_list):
@@ -130,13 +134,13 @@ def callback(data_l, depth_l):
 
             #get points from button base surface in Base frame and in range 2x button size with the assumption 
             # that base surface is paralleled to the button
-            pose_r = to_manipulator(pose_in_camL_frame(int(x+2*bbox.width), y, depths, bbox))
+            pose_r = to_manipulator(pose_in_camL_frame(int(x+1.5*bbox.width), y, depths, bbox))
             pose_r.position.z = pose.position.z
             pose_r = pose_r - pose
             pose_r = pose_r.normalize()
 
             #plane is always must be perpendicular to the floor
-            pose_up = to_manipulator(pose_in_camL_frame(x, int(y-2*bbox.height), depths, bbox))
+            pose_up = to_manipulator(pose_in_camL_frame(x, int(y-1.5*bbox.height), depths, bbox))
             pose_up.position.x = pose.position.x
             pose_up.position.y = pose.position.y
             pose_up = pose_up - pose
