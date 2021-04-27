@@ -223,7 +223,7 @@ if __name__ == '__main__':
     tss = ApproximateTimeSynchronizer([Subscriber('/zed_node/left/objects', ObjectArray), 
 				                       Subscriber('/zed_node/depth/depth_registered', Image)], 
                                        queue_size=10, 
-                                       slop=1)
+                                       slop=3)
     tss.registerCallback(callback)
     
     pub = rospy.Publisher('/zed_node/button_Pose_from_Dsensor', PoseStamped, queue_size=10)
