@@ -1,0 +1,23 @@
+<launch>
+
+  <!-- Визуализация для отладки, запускает отдельный, уже настроенный rviz в простанстве имен камеры -->
+  <arg name="rviz" default="false" />
+
+  <!-- Настройка пространства имен камеры -->
+  <arg name="camera_ns" default="/zed_node/left/" />
+  <arg name="image_topic" default="image_rect_color" />
+  <arg name="objects_topic" default="objects" />
+  <arg name="objects_image_topic" default="objects_image" />
+
+  <group ns="$(arg camera_ns)">
+    <remap from="image" to="$(arg image_topic)" />
+    <remap from="objects" to="$(arg objects_topic)" />
+    <remap from="objects_image" to="$(arg objects_image_topic)" />
+    <node pkg="camera_objects_visualizer" type="camera_objects_visualizer.py" name="camera_objects_visualizer" output="screen" />
+
+    <group if="$(arg rviz)">
+      <node pkg="rviz" type="rviz" name="rviz" args="-d $(find camera_objects_visualizer)/rviz/main.rviz" required="true" />
+    </group>
+  </group>
+
+</launch>
