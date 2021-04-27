@@ -133,53 +133,69 @@ def callback(data_l, depth_l):
             pose_r = to_manipulator(pose_in_camL_frame(int(x+2*bbox.width), y, depths, bbox))
             pose_r.position.z = pose.position.z
             pose_r = pose_r - pose
-            pose_r.normalize()
+            pose_r = pose_r.normalize()
 
             #plane is always must be perpendicular to the floor
             pose_up = to_manipulator(pose_in_camL_frame(x, int(y-2*bbox.height), depths, bbox))
             pose_up.position.x = pose.position.x
             pose_up.position.y = pose.position.y
             pose_up = pose_up - pose
-            pose_up.normalize()
+            pose_up = pose_up.normalize()
 
             a, b, c = numpy.cross([pose_up.position.x, pose_up.position.y, pose_up.position.z],
                                     [pose_r.position.x, pose_r.position.y, pose_r.position.z])
             
             pose_n = Pose(position=Point(a, b, c))
-            pose_n.normalize()
+            pose_n = pose_n.normalize()
             
-            print("up", pose_up.position.x, pose_up.position.y, pose_up.position.z)
-            print("right", pose_r.position.x, pose_r.position.y, pose_r.position.z)
-            print("norm", pose_n.position.x, pose_n.position.y, pose_n.position.z)
-            #draw normal
-            #marker = Marker()
-            #marker.header.frame_id = "base_link"
-            #marker.type = 5
-            #marker.action = 0
+            if any([numpy.isnan(i) for i in numpy.concatenate((pose.as_numpy(), pose_r.as_numpy(), pose_up.as_numpy(), pose_n.as_numpy()))]):
+                return
 
-            #marker.scale.x = 0.01
-            #marker.scale.y = 1
-            #marker.scale.z = 1
-            #marker.color.a = 1.0
-            #marker.color.r = 1.0
-            #marker.color.g = 1.0
-            #marker.color.b = 0.0
-            #marker.pose.orientation.w = 1.0
 
-            #marker.pose.position = Point(0, 0, 0)
-            #marker.points = [Point(0, 0, 0), Point(a, b, c)]
-            #marker_pub2.publish(marker)
+            #print("right", pose_r.position.x, pose_r.position.y, pose_r.position.z)
+            #print("norm", pose_n.position.x, pose_n.position.y, pose_n.position.z)
+            #print("up", pose_up.position.x, pose_up.position.y, pose_up.position.z)
+
+            #draw new basis
+            marker = Marker()
+            marker.header.frame_id = "base_link"
+            marker.type = 5
+            marker.action = 0
+
+            marker.scale.x = 0.01
+            marker.scale.y = 1
+            marker.scale.z = 1
+            marker.color.a = 1.0
+            marker.color.r = 1.0
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+            marker.pose.orientation.w = 1.0
+
+            marker.pose.position = Point(0, 0, 0)
+            marker.points = [Point(0, 0, 0), pose_r.position,
+                             Point(0, 0, 0), pose_n.position,
+                             Point(0, 0, 0), pose_up.position]
+            marker_pub2.publish(marker)
 
 
             #print(math.degrees(math.acos(a)), math.degrees(math.acos(b)), math.degrees(math.acos(c)))
             #quaternion to button
-            #Q = unit_vector(quaternion_from_euler(math.acos(a),math.acos(b),math.acos(c), 'rxyz'))
-
-            Q = quaternion_from_matrix(numpy.array([[pose_up.position.x, pose_up.position.y, pose_up.position.z, 0], 
-                                                    [pose_r.position.x, pose_r.position.y, pose_r.position.z, 0], 
-                                                    [pose_n.position.x, pose_n.position.y, pose_n.position.z, 0], 
-                                                    [0, 0, 0, 1]]))
+            #Q = quaternion_from_euler(math.acos(a),math.acos(b),math.acos(c), 'rxyz')
+            #Q = quaternion_from_matrix(numpy.array([[pose_r.position.x, pose_r.position.y, pose_r.position.z, 0], 
+            #                                        [pose_n.position.x, pose_n.position.y, pose_n.position.z, 0], 
+            #                                        [pose_up.position.x, pose_up.position.y, pose_up.position.z, 0], 
+            #                                        [0, 0, 0, 1]]))
     
+            #Q = quaternion_from_matrix(numpy.array([[0.71, 0.71, 0, 0], 
+            #                                        [-0.71, 0.71, 0, 0], 
+            #                                        [0, 0, 1, 0], 
+            #                                        [0, 0, 0, 1]]))
+            angel_x = int(math.degrees(math.acos(pose_r.position.x)))
+            print(angel_x)
+            Q = quaternion_from_matrix(numpy.array([[math.cos(math.radians(-angel_x)), -math.sin(math.radians(-angel_x)), 0, 0], 
+                                                    [math.sin(math.radians(-angel_x)), math.cos(math.radians(-angel_x)), 0, 0], 
+                                                    [0, 0, 1, 0], 
+                                                    [0, 0, 0, 1]]))
             pose.orientation.x = Q[0]
             pose.orientation.y = Q[1]
             pose.orientation.z = Q[2]
@@ -192,7 +208,6 @@ def callback(data_l, depth_l):
             
         except Exception as e:
             print(e.message)
-            raise e
 
     else:
         print("not l objects")
