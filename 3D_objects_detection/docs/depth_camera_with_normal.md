@@ -5,7 +5,7 @@
 
 image_l (SensorImage)    
 solo_1 (ObjectsArray)      
-zed_camera.py(Pose) 
+zed_camera.py(Pose в топике /zed_node/button_Pose_from_Dsensor) 
 
 Шаги для запуска: 
 - (терминал 1) cd Repos/solov2_pytorch1.7 
