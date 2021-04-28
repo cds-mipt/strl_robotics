@@ -7,8 +7,8 @@ docker exec -it --user docker_solo \
 			cd catkin_ws;
 			source devel/setup.bash;
 			cd src/camera_objects_visualizer/launch;
+			echo 'For start write -> roslaunch zed_depth_test_visual.launch';
 			bash"
-echo "For start write -> roslaunch zed_depth_test_visual.launch"
 
 
 
