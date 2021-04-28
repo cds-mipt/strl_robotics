@@ -7,7 +7,8 @@ image_l (SensorImage)
 solo_1 (ObjectsArray)      
 zed_camera.py(Pose в топике /zed_node/button_Pose_from_Dsensor) 
 
-Шаги для запуска: 
+
+Шаги для запуска **(организованы в виде скриптов в bash_scripts)**: 
 - (терминал 1) 
 `cd Repos/solov2_pytorch1.7`  
 `./docker/latest/start_devel.sh`  
