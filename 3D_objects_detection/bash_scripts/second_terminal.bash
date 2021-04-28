@@ -7,8 +7,8 @@ docker exec -it --user docker_solo \
 			cd catkin_ws;
 			source devel/setup.bash;
 			cd src/solov2/solo_ros/scripts/;
+			echo 'For start write -> python zed_camera.py';
 			bash"
-echo "For start write -> python zed_camera.py"
 
 
 
