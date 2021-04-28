@@ -13,5 +13,5 @@ docker exec -it --user docker_solo \
 			catkin_make;
 			source devel/setup.bash;
 			cd src/solov2/solo_ros/launch/;
+			echo 'For start write -> roslaunch zed_depth_test.launch';
 			bash"
-echo "For start write -> roslaunch zed_depth_test.launch"
