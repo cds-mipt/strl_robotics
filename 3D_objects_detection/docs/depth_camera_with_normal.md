@@ -38,7 +38,8 @@ zed_camera.py(Pose в топике /zed_node/button_Pose_from_Dsensor)
 `cd catkin_ws`  
 `source devel/setup.bash`  
 `cd src/camera_objects_visualizer/launch`  
-`roslaunch zed_depth_test_visual.launch`  
+`roslaunch zed_depth_test_visual.launch` 
+(теперь можно открыть rqtи посмотреть на топик /zed_node/left/objects_image
 - (терминал 4 для визуализации)
 `cd Repos/solov2_utils`  
 `rosrun rviz rviz -d normal.rviz`  
