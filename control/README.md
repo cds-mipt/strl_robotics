@@ -36,3 +36,7 @@
 
 Для тестировать движение с алгоритмом Trajectory Tracking нужно написать ROS команду
 * roslaunch trajectory_tracking trajectory_tracking.launch 
+
+## Тестирование
+Результаты текущего тестирования доступны по ссылки
+https://docs.google.com/spreadsheets/d/1q6AjGSBBgOyaoWc2Aa0lm-KNwSujbRa3q5FfKEZK0G4/edit?usp=sharing
