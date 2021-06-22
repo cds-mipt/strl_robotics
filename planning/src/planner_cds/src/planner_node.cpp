@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 
+#include <std_msgs/Bool.h>
 #include <tf2_msgs/TFMessage.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -24,6 +25,7 @@ class Planner{
 private:
     ros::Subscriber     taskSub;
     ros::Subscriber     gridSub;
+    ros::Subscriber     replanSub;
     ros::Publisher      trajPub;
     ros::Publisher      visTrajPub;
 
@@ -56,6 +58,7 @@ public:
     Planner(tf2_ros::Buffer& _tfBuffer);
     void setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg);
     void setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg);
+    void needReplan(const std_msgs::Bool::ConstPtr& boolMsg);
 
     void getRobotPose();
     bool plan();
@@ -122,6 +125,11 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
                                                                                 &Planner::setGrid,
                                                                                 this);
 
+    replanSub                   = nh.subscribe<std_msgs::Bool>                 ("replan",
+                                                                                 50,
+                                                                                 &Planner::needReplan,
+                                                                                 this);
+
     trajPub                     = nh.advertise<geometry_msgs::PoseArray>        (pathTopic,
                                                                                 50);
 
@@ -156,22 +164,28 @@ void Planner::setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg) {
 }
 
 void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
-    if(gridMsg->data.size() != 0){
+    if (gridMsg->data.size() != 0) {
         this->grid = *gridMsg;
-        if(map.getMap(gridMsg)) {
+        if (map.getMap(gridMsg)) {
             gridSet = true;
-            if(taskSet) replan(checkPath());
-        }else {
+            if (taskSet) replan(checkPath());
+        } else {
             gridSet = false;
             ROS_WARN_STREAM("Cannot set map!");
         }
-    }else{
+    } else {
         gridSet = false;
         ROS_WARN_STREAM("Received map is empty!");
     }
-
-
 }
+
+
+void Planner::needReplan(const std_msgs::Bool::ConstPtr& boolMsg){
+        if(boolMsg->data){
+            this->replan(true);
+        }
+    }
+
 
 void Planner::getRobotPose() {
     geometry_msgs::TransformStamped transform;
