@@ -1,5 +1,6 @@
 # strl_robotics - STRL Robotics framework for mobile robots
 
+[Структура фреймворка в pdf](https://yadi.sk/i/YCP-PfHOuK9u6w)
 
 **0. Системы координат робота** 
 ---
