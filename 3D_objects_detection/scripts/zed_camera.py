@@ -14,7 +14,7 @@ from camera_objects_msgs.msg import ObjectArray, Object, RLE
 
 from cv_bridge import CvBridge
 from tf.transformations import quaternion_from_euler, unit_vector, projection_matrix, quaternion_from_matrix, euler_from_quaternion
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from button_srv.srv import GetButtons, GetButtonsResponse
 from scipy.spatial.transform import Rotation
 
@@ -113,6 +113,32 @@ def make_surface(main_pose, pose_list):
                      main_pose.position - pose_list[1].position]
     marker_pub.publish(marker)
 
+def produce_marker(r, g, b, pose, id):
+   
+    marker = Marker()
+    marker.header.frame_id = "base_link"
+    marker.type = 2
+    marker.action = 0
+    marker.id = id
+
+    marker.scale.x = 0.025
+    marker.scale.y = 0.025
+    marker.scale.z = 0.025
+    marker.color.a = 1.0
+    marker.color.r = r
+    marker.color.g = g
+    marker.color.b = b
+    marker.pose.orientation.w = 1.0
+
+    marker.pose = pose
+            
+
+    pose.orientation.x = 0
+    pose.orientation.y = 0
+    pose.orientation.z = 0
+    pose.orientation.w = 1
+    return marker
+
 def callback(data_l, depth_l):
     if len(data_l.objects) == 1:
         bbox = data_l.objects[0].bbox
@@ -121,6 +147,7 @@ def callback(data_l, depth_l):
         x, y = produce_center_point(bbox)
 
         try:
+            markerarray = MarkerArray()
             depths = bridge.imgmsg_to_cv2(depth_l, desired_encoding='passthrough')
 
             pose_st = PoseStamped()
@@ -136,8 +163,8 @@ def callback(data_l, depth_l):
             #get points from button base surface in Base frame and in range 2x button size with the assumption 
             # that base surface is paralleled to the button
             # ! pod ostrimi uglami x - bbox.width budut hvatat tochki mimo
-            pose_l_up = to_manipulator(pose_in_camL_frame(int(x-0.75*bbox.width//2), y+bbox.height, depths, bbox, [3,3]))
-            pose_r_up = to_manipulator(pose_in_camL_frame(int(x+0.75*bbox.width//2), y+bbox.height, depths, bbox, [3,3]))
+            pose_l_up = to_manipulator(pose_in_camL_frame(int(x-0.75*bbox.width), y+bbox.height, depths, bbox, [3,3]))
+            pose_r_up = to_manipulator(pose_in_camL_frame(int(x+0.75*bbox.width), y+bbox.height, depths, bbox, [3,3]))
 
             
             if any([numpy.isnan(pose_l_up.position.x), numpy.isnan(pose_l_up.position.y), numpy.isnan(pose_l_up.position.z),
@@ -145,7 +172,16 @@ def callback(data_l, depth_l):
                 return
 
             pose_l_up.position.z = pose_r_up.position.z
-        
+            
+
+            marker_center = produce_marker(0,0,1,pose, 0)
+            marker_left = produce_marker(1,0,1, pose_l_up, 1)
+            marker_right = produce_marker(1,0,1,pose_r_up, 2)
+            markerarray.markers = []
+            markerarray.markers.extend([marker_center, marker_left, marker_right])
+            #markerarray.markers.append(marker_left)
+            print("Markers count", len(markerarray.markers))
+            marker_pub.publish(markerarray)
 
             #plane is always must be perpendicular to the floor
             #pose_up = to_manipulator(pose_in_camL_frame(x, int(y-bbox.height), depths, bbox))
@@ -168,29 +204,7 @@ def callback(data_l, depth_l):
             #print("norm", pose_n.position.x, pose_n.position.y, pose_n.position.z)
             #print("up", pose_up.position.x, pose_up.position.y, pose_up.position.z)
 
-            #draw new basis
-            marker = Marker()
-            marker.header.frame_id = "base_link"
-            marker.type = 4
-            marker.action = 0
-
-            marker.scale.x = 0.01
-            marker.scale.y = 3
-            marker.scale.z = 0.01
-            marker.color.a = 1.0
-            marker.color.r = 0.0
-            marker.color.g = 0.0
-            marker.color.b = 1.0
-            marker.pose.orientation.w = 1.0
-
-            marker.pose.position = Point(0,0,0)
-            #marker.points = [pose.position, pose_l.position]
-            #marker_pub.publish(marker)
-
-            pose.orientation.x = 0
-            pose.orientation.y = 0
-            pose.orientation.z = 0
-            pose.orientation.w = 1
+            
             #print(math.degrees(math.acos(a)), math.degrees(math.acos(b)), math.degrees(math.acos(c)))
             #quaternion to button
             #Q = quaternion_from_euler(math.acos(a),math.acos(b),math.acos(c), 'rxyz')
@@ -200,7 +214,9 @@ def callback(data_l, depth_l):
             pose_l_up.position.y = abs(pose_l_up.position.y)
 
             angle = round(math.degrees(math.atan(pose_l_up.position.x/pose_l_up.position.y)))
-            #print("Angle", angle)
+
+            
+            print("Angle", angle)
             #angle = math.radians(angle)
             #angle_pub.publish(angle)
 
@@ -218,7 +234,8 @@ def callback(data_l, depth_l):
             pose_st.header.frame_id = "base_link"
             pose_st.header.stamp = rospy.Time.now()
             pose_st.pose = pose
-            #print("base_link")
+            print("In base_link")
+            print_pose(pose)
             
             pose_st = tf_listener.transformPose("ur_arm_base", pose_st)
             
@@ -290,7 +307,7 @@ if __name__ == '__main__':
     tss.registerCallback(callback)
     s = rospy.Service('get_buttons_pose', GetButtons, handle_get_buttons)
     pub = rospy.Publisher('/zed_node/button_Pose_from_Dsensor', PoseStamped, queue_size=10)
-    marker_pub = rospy.Publisher('/marker', Marker, queue_size=1)
+    marker_pub = rospy.Publisher('/marker', MarkerArray, queue_size=1)
     angle_pub = rospy.Publisher('/button_angle', Float32, queue_size=1)
     rate = rospy.Rate(6)
     tf_listener = tf.TransformListener()
