@@ -43,3 +43,4 @@ zed_camera.py(Pose в топике /zed_node/button_Pose_from_Dsensor)
 - (терминал 4 для визуализации)
 `cd Repos/solov2_utils`  
 `rosrun rviz rviz -d normal.rviz`  
+или найдите в недавних
