@@ -217,7 +217,7 @@ def callback(data_l, depth_l):
 
             
             print("Angle", angle)
-            #angle = math.radians(angle)
+            angle = math.radians(angle)
             #angle_pub.publish(angle)
 
             #Q = quaternion_from_matrix(numpy.array([[math.cos(math.radians(angle)), -math.sin(math.radians(angle)), 0, 0], 
@@ -241,8 +241,12 @@ def callback(data_l, depth_l):
             
             print("Center")
             print_pose(pose_st.pose)
-            #r = Rotation.from_quat([pose_st.pose.orientation.x, pose_st.pose.orientation.y,pose_st.pose.orientation.z,pose_st.pose.orientation.w])
             
+            r = Rotation.from_euler('xyz', [-1.57, 0, -(3.14-angle)])
+            r = r.as_rotvec()
+            print("Rotvec", r)
+
+
             pose_st.pose.position.y += 0.07 #0.03 + 0.02 for Kostya push action/ or 0.05 + 0.02 for red button
             pose_st.pose.position.z += 0.04
             
