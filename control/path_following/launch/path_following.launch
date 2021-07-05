@@ -1,7 +1,0 @@
-<launch>
-
-    <node name="path_following" pkg="path_following" type="path_following" output="screen">
-    </node>
-    <rosparam command="load" file="$(find path_following)/config/config_path_following.yaml"/>
-
-</launch>
