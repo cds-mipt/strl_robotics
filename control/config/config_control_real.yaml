@@ -1,1 +1,20 @@
+path_topic: 'trajectory'
+cmd_topic: 'cmd_vel'
+global_frame: 'local_map_lidar'
+base_frame: 'base_link'
+velocities_topic: 'odometry/filtered'
+angle_lift_topic: 'some_topic'
+odometry_topic: 'lol_odom'
+max_v: 0.7
+min_v: 0
+acc_v: 0.15
+max_w: 0.35
+acc_w: 0.2
+kx: 4
+ky: 1
+kz: 1
+vd: 0.6
+wd: 0
+real_or_sim: false
+
 
