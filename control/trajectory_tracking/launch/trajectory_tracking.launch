@@ -1,7 +1,0 @@
-<launch>
-
-    <node name="trajectory_tracking" pkg="trajectory_tracking" type="trajectory_tracking" output="screen">
-    </node>
-<rosparam command="load" file="$(find trajectory_tracking)/config/config_trajectory_tracking.yaml"/>
-
-</launch>
