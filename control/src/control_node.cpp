@@ -230,7 +230,6 @@ void cal_average_max(int g)
         if (g==0)
     {
         dist_to_path = distance_to_path(init_x,qp[g].x,init_y,qp[g].y);
-       // ROS_INFO("k index , aver max odom qp %i %i %f %f %f %f %f %f", g , index2, average_distance, max_dist , odom_x , odom_y ,  qp[g].x , qp[g].y);
     }
     else if (g<size_path)
     {
@@ -246,8 +245,6 @@ void cal_average_max(int g)
         {
             max_dist = dist_to_path;
         }
-     //   ROS_INFO("distance to path %f" , dist_to_path);
-      //  ROS_INFO ("Odometry from tf %f , %f , %f" , odom_x , odom_y , odom_theta);
     }
     }
     
@@ -299,22 +296,15 @@ void lon_control()
     {
         if (real_or_sim)
         {
-            if(abs(angle_error)<=0.25)                    // calculate linear command for the stright line motion
+            if(abs(angle_error)<=0.25)                    
             {
                 v_cmd = sat_linear_velocity(max_v,min_v,acc_v ,distance_error, v_robot);
-               // ROS_INFO("High speed Motion ");
             }
-           /* else if (abs(angle_error)>0.45 && v_cmd > 0.2 && k_v==0)     // calculate linear command when the initial orientation of the path is big
-            {
-                v_cmd = sat_linear_velocity(0.5,min_v,acc_v ,distance_error, v_cmd);
-                ROS_INFO("Slow speed Motion ");
-            }*/
-            else if (abs(angle_error)>0.25 && v_cmd <= 0.2 && k_v==0)     // calculate linear command when the initial orientation of the path is big
+            else if (abs(angle_error)>0.25 && v_cmd <= 0.2 && k_v==0)     
             {
                 v_cmd = 0;
-               // ROS_INFO("Stop Motion ");
             }
-            else if (abs(angle_error)>0.25 && k_v>0)      // calculate linear command when the orientation of the path is big
+            else if (abs(angle_error)>0.25 && k_v>0)      
             {
                 max_v_local=v_cmd;
                 if (max_v_local>0.3)
@@ -322,7 +312,6 @@ void lon_control()
                     max_v_local=max_v_local-0.02;
                 }
                 v_cmd = sat_linear_velocity(max_v_local,min_v,acc_v ,distance_error, v_robot);
-              //  ROS_INFO("Slow speed Motion ");
             }
         }
         else
@@ -331,7 +320,6 @@ void lon_control()
             ROS_INFO("%i %i %f %f ", size_path , k_v , distance_error , angle_error);
             if (k_v == size_path-1 && distance_error<1.5 && abs(angle_error)<=0.25 && v_cmd>0.3)
             {
-             //   ROS_INFO("Decreasing speed Motion ");
                 max_v_local=v_cmd;
                 if (max_v_local>0.3)
                 {
@@ -339,23 +327,15 @@ void lon_control()
                 }
                 v_cmd = sat_linear_velocity(max_v_local,min_v,acc_v ,distance_error, v_cmd);
             }
-            else if(abs(angle_error)<=0.25)                    // calculate linear command for the stright line motion
+            else if(abs(angle_error)<=0.25)                    
             {
                 v_cmd = sat_linear_velocity(max_v,min_v,acc_v ,distance_error, v_cmd);
-            //    ROS_INFO("High speed Motion ");
             }
-           /* else if (abs(angle_error)>0.45 && v_cmd > 0.2 && k_v==0)     // calculate linear command when the initial orientation of the path is big
-            {
-                v_cmd = sat_linear_velocity(0.3,min_v,acc_v ,distance_error, v_cmd);
-                ROS_INFO("Slow speed Motion ");
-            }*/
-            else if (abs(angle_error)>0.25 && v_cmd <= 0.2 && k_v==0)     // calculate linear command when the initial orientation of the path is big
+            else if (abs(angle_error)>0.25 && v_cmd <= 0.2 && k_v==0)     
             {
                 v_cmd = sat_linear_velocity(0.05,min_v,acc_v ,distance_error, v_cmd);
-            //    ROS_INFO("%f", angle_error);
-             //   ROS_INFO("Stop Motion ");
             }
-            else if (abs(angle_error)>0.25 && k_v>0)      // calculate linear command when the orientation of the path is big
+            else if (abs(angle_error)>0.25 && k_v>0)      
             {
                 max_v_local=v_cmd;
                 if (max_v_local>0.3)
@@ -363,7 +343,6 @@ void lon_control()
                     max_v_local=max_v_local-0.02;
                 }
                 v_cmd = sat_linear_velocity(max_v_local,min_v,acc_v ,distance_error, v_cmd);
-            //    ROS_INFO("Slow speed Motion ");
             }
         }   
 
@@ -753,7 +732,7 @@ int main(int argc, char **argv) {
 
     ros::Rate loop_rate(10); // ros spins 20 frames per second
 
-    outFile.open(("/home/cont/catkin_ws/src/control/generator_point/src/dat.txt"));
+    //outFile.open(("/home/cont/catkin_ws/src/control/generator_point/src/dat.txt"));
 
      traject_path.header.frame_id = global_frame;
      traject_path.header.stamp = ros::Time::now();
@@ -789,8 +768,8 @@ int main(int argc, char **argv) {
         if(start_motion)
         {
             ROS_INFO("Start Motion");
-            ROS_INFO("Position Robot %f %f", odom_x-89 , odom_y-12);
-            outFile << odom_x-89 <<" , "<< odom_y-12<< " , "<< sum <<" , "<< index2<< " , "<<average_distance<<" , "<<max_dist<<" , "<<t<<endl;
+            ROS_INFO("Position Robot %f %f", odom_x , odom_y);
+           // outFile << odom_x <<" , "<< odom_y<< " , "<< sum <<" , "<< index2<< " , "<<average_distance<<" , "<<max_dist<<" , "<<t<<endl;
             start_motion=false;
         }
         if (method==1)
@@ -874,10 +853,10 @@ int main(int argc, char **argv) {
             cmd_pub.publish(tw_msg);
             if(!written_to_file)
             {
-                outFile << qp[size_path-1].x-89<<" , "<<qp[size_path-1].y-12<< " , "<< odom_x-89 <<" , "<< odom_y-12<< " , "<<average_distance<<" , "<<max_dist<<" , "<<taken_time<<endl;
+               // outFile << qp[size_path-1].x<<" , "<<qp[size_path-1].y<< " , "<< odom_x<<" , "<< odom_y<< " , "<<average_distance<<" , "<<max_dist<<" , "<<taken_time<<endl;
                 ROS_INFO("Complete path");
-                ROS_INFO("odometry %f , %f , %f" , odom_x-89 ,odom_y-12 , odom_theta);
-                ROS_INFO("x y(local_lidar_map) avarage max time %f , %f , %f , %f , %f", qp[size_path-1].x-89,qp[size_path-1].y-12, average_distance , max_dist , taken_time);
+                ROS_INFO("odometry %f , %f , %f" , odom_x ,odom_y , odom_theta);
+                ROS_INFO("x y(local_lidar_map) avarage max time %f , %f , %f , %f , %f", qp[size_path-1].x,qp[size_path-1].y, average_distance , max_dist , taken_time);
                 written_to_file = true;
                 
             } 
