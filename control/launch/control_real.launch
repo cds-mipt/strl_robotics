@@ -1,1 +1,10 @@
 
+<launch>
+
+    <node name="control" pkg="control" type="control" output="screen">
+    </node>
+<param name="method" value="$(arg method)" />
+<rosparam command="load" file="$(find control)/config/config_control_real.yaml"/>
+
+
+</launch>
