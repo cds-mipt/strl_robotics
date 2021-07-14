@@ -9,6 +9,7 @@ project(obstacle_inflation)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  distance_map_msgs
   nav_msgs
   roscpp
   std_msgs
@@ -212,6 +213,6 @@ catkin_install_python(PROGRAMS scripts/simple_grid.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
         )
 
-add_executable(obstacle_inflation src/obstacle_inflation_node.cpp src/map.cpp)
+add_executable(obstacle_inflation src/obstacle_inflation_node.cpp)
 add_dependencies(obstacle_inflation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(obstacle_inflation ${catkin_LIBRARIES})

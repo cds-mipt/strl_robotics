@@ -4,7 +4,7 @@
   path_topic: "trajectory",
   path_topic_vis: "path_visualization",
   search_type: "theta",
-  global_frame: "map",
+  global_frame: "local_map_lidar",
   base_frame: "base_link"
 }
 #Available planners are:  "bfs" - BFS

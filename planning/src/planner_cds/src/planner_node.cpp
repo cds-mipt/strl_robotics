@@ -33,6 +33,7 @@ private:
 
     nav_msgs::Odometry              odom;
     geometry_msgs::PoseStamped      goal;
+    geometry_msgs::Pose             transformedGoal;
     nav_msgs::OccupancyGrid         grid;
     visualization_msgs::Marker      vis_path;
 
@@ -182,7 +183,7 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
 
 void Planner::needReplan(const std_msgs::Bool::ConstPtr& boolMsg){
         if(boolMsg->data){
-            this->replan(true);
+            this->replan(false);
         }
     }
 
@@ -231,7 +232,17 @@ bool Planner::plan() {
     const EnvironmentOptions options;
     getRobotPose();
 
-    auto transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goal.pose, goal.header.frame_id, grid.header.frame_id));
+    transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goal.pose, goal.header.frame_id, grid.header.frame_id));
+
+    if(!map.CellOnGrid(transformedGoal.position.y, transformedGoal.position.x)){
+        ROS_WARN_STREAM("Goal point is below map. Changing to nearest map point.");
+        transformedGoal.position.y = (transformedGoal.position.y < 0 ? 0 : transformedGoal.position.y);
+        transformedGoal.position.x = (transformedGoal.position.x < 0 ? 0 : transformedGoal.position.x);
+
+        transformedGoal.position.y = (transformedGoal.position.y >= map.height ? map.height-1 : transformedGoal.position.y);
+        transformedGoal.position.x = (transformedGoal.position.x >= map.width ? map.width-1 : transformedGoal.position.x);
+    }
+
     map.setGoal(int(transformedGoal.position.y),
                 int(transformedGoal.position.x));
 
@@ -243,7 +254,7 @@ bool Planner::plan() {
     ROS_INFO_STREAM("Goal position is: " << map.goal_i << "  " << map.goal_j);
 
     if((map.start_j > map.width) || (map.start_i > map.height) || (map.start_j < 0) || (map.start_i < 0)){
-        ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
+        ROS_WARN_STREAM("Wrong start coordinates! Interrupting");
         return false;
     }
 
@@ -267,6 +278,8 @@ bool Planner::plan() {
 
     if (searchRes.hppath->size() == 0) return false;
 
+
+
     auto nodePath = searchRes.hppath;
 
     fillPath(*nodePath);
@@ -277,13 +290,18 @@ bool Planner::plan() {
 }
 
 bool Planner::checkPath() {
+    if(!map.CellOnGrid(transformedGoal.position.y, transformedGoal.position.x)) return false;
+
     transformPathBack();
-    if (path.poses.size() == 0) {return false;}
+    if (path.poses.size() == 0) return false;
+
     for(auto point : path.poses){
         if(grid.data[point.position.y*grid.info.width + point.position.x] > 60) {transformPath(); return false;}
 //        if(map.CellIsObstacle(point.position.y, point.position.x)) {transformPath(); return false;}
     }
-    {transformPath(); return true;}
+
+    transformPath();
+    return true;
 }
 
 void Planner::fillPath(std::list<Node> nodePath){

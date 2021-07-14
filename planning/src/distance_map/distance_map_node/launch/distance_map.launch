@@ -1,0 +1,16 @@
+<launch>
+
+  <!-- The ditance map plugin type. -->
+  <arg name="distance_map_type" default="distmap/DistanceMapDeadReck"/>
+
+
+  <!-- The input topic. -->
+  <arg name="topic_in" default="/dist_map_in"/>
+
+  <node pkg="distance_map_node" type="distance_map_node" name="distance_map_node"
+        output="screen">
+    <param name="distance_map_type" value="$(arg distance_map_type)" />
+    <remap from="/map" to="$(arg topic_in)" />
+  </node>
+
+</launch>

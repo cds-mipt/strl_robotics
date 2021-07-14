@@ -37,6 +37,9 @@ bool Map::CellOnGrid(int i, int j) const
     return (i < height && i >= 0 && j < width && j >= 0);
 }
 
+
+
+
 bool Map::getMap(const char *FileName)
 {
     int rowiter = 0, grid_i = 0, grid_j = 0;

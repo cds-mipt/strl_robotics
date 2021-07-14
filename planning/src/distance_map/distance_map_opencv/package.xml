@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>distance_map_opencv</name>
+  <version>0.1.0</version>
+  <description>
+    Node package of the map_distance project.
+    It contains the ROS node that instantiate the
+    distance map plugin.
+  </description>
+
+  <author email="sai.kishor@pal-robotics.com">Sai Kishor Kothakota</author>
+  <maintainer email="deray.jeremie@gmail.com">Jeremie Deray</maintainer>
+
+  <!-- this package license -->
+  <license>Apache-2.0</license>
+
+  <!-- OpenCV license -->
+  <license>BSD</license>
+  <url type="website">https://github.com/opencv/opencv</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>distance_map_core</depend>
+
+  <!-- Indirect OpenCV dependency -->
+  <depend>image_geometry</depend>
+
+  <export>
+    <distance_map_core plugin="${prefix}/distance_map_plugin.xml" />
+  </export>
+</package>

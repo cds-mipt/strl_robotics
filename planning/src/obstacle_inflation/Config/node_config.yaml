@@ -1,12 +1,12 @@
 {
   costmap_topic: "costmap",
-  grid_topic: "fancy_grid",
+  grid_topic: "grid",
   raw_grid_topic: "rtabmap/grid_map",
 #  raw_grid_topic: "simple_grid",
   robot_size: 0.5,
   safe_size: 0.6,
   grid_size: 500,
-  log_level: 0, #Either 0 or 1 for empty log and full log respectively\
+  log_level: 1, #Either 0 or 1 for empty log and full log respectively\
   global_frame: "map",
   base_frame: "base_link"
 }

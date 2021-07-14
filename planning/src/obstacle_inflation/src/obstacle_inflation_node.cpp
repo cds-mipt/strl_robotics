@@ -6,35 +6,33 @@
 #include <ros/ros.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Odometry.h>
-#include <tf2_msgs/TFMessage.h>
-#include <tf2_ros/transform_listener.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <distance_map_msgs/DistanceMap.h>
 
 #include <fstream>
 #include <chrono>
-#include "map.h"
+#include <exception>
 
-
-double yaw(geometry_msgs::Quaternion q){
-    double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
-    double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-    return std::atan2(siny_cosp, cosy_cosp);
-}
 
 class ObstInf{
 private:
-
+    //!The idea is as follows:
+    //!We receive raw grid from some map creator
     std::string rawGridTopic;
     ros::Subscriber rawGridSub;
+    //!Then we send it to a distance map creator
+    std::string distanceMapTopicIn;
+    ros::Publisher distanceMapPub;
+    //!Next we receive distance map as it is
+    std::string distanceMapTopicOut;
+    ros::Subscriber distanceMapSub;
+    //!And we modify this distance map to be either inflated grid
     std::string gridTopic;
     ros::Publisher gridPub;
+    //!Or regular costmap i.e. not modify at all
     std::string costmapTopic;
     ros::Publisher costmapPub;
 
-    tf2_ros::Buffer&                tfBuffer;
 
-
-    Map map = Map(600, 600);
     nav_msgs::OccupancyGrid grid;
     nav_msgs::OccupancyGrid costmap;
 
@@ -43,152 +41,137 @@ private:
     double robot_size;
     double safe_size;
 
-    std::string globalFrame;
-    std::string baseFrame;
+    bool inflating = false;
+
 
 public:
-    ObstInf(tf2_ros::Buffer& _tfBuffer);
+    ObstInf();
 
-    int log_level;
+    int log_level = 1;
 
-    void inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg);
+    void computeDistances(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg);
+    void inflate(const distance_map_msgs::DistanceMap::ConstPtr& distMapMsg);
     void publish();
 };
 
-ObstInf::ObstInf(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer) {
+ObstInf::ObstInf(){
     ros::NodeHandle nh;
 
     nh.param<std::string>("/inflation_params/grid_topic", gridTopic, "some_grid");
+    nh.param<std::string>("/inflation_params/distmap_topic_in", distanceMapTopicIn, "/dist_map_in");
     nh.param<std::string>("/inflation_params/raw_grid_topic", rawGridTopic, "some_raw_grid");
     nh.param<std::string>("/inflation_params/costmap_topic", costmapTopic, "some_costmap");
+    nh.param<std::string>("/inflation_params/distmap_topic_out", distanceMapTopicOut, "/distance_map_node/distance_field_obstacles");
 
-
-    nh.param<std::string>("/inflation_params/global_frame", globalFrame, "map");
-    nh.param<std::string>("/inflation_params/base_frame", baseFrame, "base_link");
 
     nh.param<double>("/inflation_params/robot_size", robot_size, 1.0);
     nh.param<double>("/inflation_params/safe_size", safe_size, 1.0);
     nh.param<int>("/inflation_params/log_level", log_level, 1);
-    nh.param<int>("/inflation_params/grid_size", gridSize, 500);
 
 
-    rawGridSub   =      nh.subscribe<nav_msgs::OccupancyGrid>       (rawGridTopic,
-                                                                    50,
-                                                                    &ObstInf::inflate,
-                                                                    this);
+    rawGridSub      =      nh.subscribe<nav_msgs::OccupancyGrid>            (rawGridTopic,
+                                                                            50,
+                                                                            &ObstInf::computeDistances,
+                                                                            this);
 
-    gridPub      =      nh.advertise<nav_msgs::OccupancyGrid>       (gridTopic,
-                                                                    50);
+    distanceMapPub  =      nh.advertise<nav_msgs::OccupancyGrid>            (distanceMapTopicIn,
+                                                                            50);
+
+
+    distanceMapSub  =      nh.subscribe<distance_map_msgs::DistanceMap>     (distanceMapTopicOut,
+                                                                            50,
+                                                                            &ObstInf::inflate,
+                                                                            this);
+
+    gridPub         =      nh.advertise<nav_msgs::OccupancyGrid>            (gridTopic,
+                                                                            50);
     
-    costmapPub   =      nh.advertise<nav_msgs::OccupancyGrid>       (costmapTopic,
-                                                                    50);
+    costmapPub      =      nh.advertise<nav_msgs::OccupancyGrid>            (costmapTopic,
+                                                                            50);
 }
 
 
 
-void ObstInf::inflate(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
-
-    int minSize = int(std::min(gridMsg->info.width, gridMsg->info.height));
-
-    geometry_msgs::PoseStamped robot_pose;
-    geometry_msgs::TransformStamped transform;
-    try {
-        transform = tfBuffer.lookupTransform(gridMsg->header.frame_id, baseFrame, ros::Time(0));
-    }catch (tf2::TransformException &ex) {
-        ROS_WARN("%s", ex.what());
-    }
-    robot_pose.header.frame_id = gridMsg->header.frame_id;
-    robot_pose.pose.position.x = transform.transform.translation.x;
-    robot_pose.pose.position.y = transform.transform.translation.y;
-    robot_pose.pose.position.z = transform.transform.translation.z;
-    robot_pose.pose.orientation = transform.transform.rotation;
+void ObstInf::computeDistances(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
+    if(log_level) ROS_INFO_STREAM("Received grid");
 
 
-    robot_pose.pose.position.x -= gridMsg->info.origin.position.x;
-    robot_pose.pose.position.y -= gridMsg->info.origin.position.y;
-    robot_pose.pose.position.x = int(robot_pose.pose.position.x / gridMsg->info.resolution);
-    robot_pose.pose.position.y = int(robot_pose.pose.position.y / gridMsg->info.resolution);
+    if(!inflating){
+        grid.data.clear();
+        costmap.data.clear();
 
-    this->grid = *gridMsg;
-    this->costmap = grid;
+        this->grid = *gridMsg;
+        this->costmap = *gridMsg;
 
-    map.setWidth(minSize);
-    map.setHeight(minSize);
+        if(log_level) ROS_INFO_STREAM("Inflating");
 
-    if(log_level){
-        ROS_INFO_STREAM("Received grid. Inflating");
-        ROS_INFO_STREAM("Width: " << gridMsg->info.width << "\t Height: " << gridMsg->info.height);
-        ROS_INFO_STREAM("X: " << robot_pose.pose.position.x << "\t Y: " << robot_pose.pose.position.y);
-        ROS_INFO_STREAM("X start: " << std::max(int(robot_pose.pose.position.x - minSize/2), 0) << "\t X end: " << std::min(int(robot_pose.pose.position.x + minSize/2), int(grid.info.width)));
-        ROS_INFO_STREAM("Y start: " << std::max(int(robot_pose.pose.position.y - minSize/2), 0) << "\t Y end: " << std::min(int(robot_pose.pose.position.y + minSize/2), int(grid.info.height)));
-    }
-
-    int _x = 0, _y = 0;
-    for (int y = std::max(int(robot_pose.pose.position.y - minSize/2), 0); y < std::min(int(robot_pose.pose.position.y + minSize/2), int(grid.info.height)); ++y){
-        for (int x = std::max(int(robot_pose.pose.position.x - minSize/2), 0); x < std::min(int(robot_pose.pose.position.x + minSize/2), int(grid.info.width)); ++x){
-           map.setCell(_x, _y, gridMsg->data[y * grid.info.width + x] > 0);
-           ++_x;
+        //!Here we modify our grid to make unknown cells traversable
+        auto modifiedGrid = grid;
+        for (int y = 0; y < modifiedGrid.info.height; ++y){
+            for (int x = 0; x < modifiedGrid.info.width; ++x){
+                if (modifiedGrid.data[y * modifiedGrid.info.width + x] == -1) modifiedGrid.data[y * modifiedGrid.info.width + x] = 0;
+            }
         }
-        _x = 0;
-        ++_y;
+        inflating = true;
+        distanceMapPub.publish(modifiedGrid);
+        //! Publish raw grid to distance map package
+        //! Receive distance map
     }
 
 
-    map.computeDistances();
 
+
+
+
+
+}
+
+
+
+void ObstInf::inflate(const distance_map_msgs::DistanceMap::ConstPtr& distMapMsg) {
+    if(log_level) ROS_INFO_STREAM("Received distance map");
+
+    if(!grid.info.resolution) return;
     double robotCellSize = robot_size / grid.info.resolution;
-    if(log_level) ROS_INFO_STREAM("Robot size in cells:" << robotCellSize);
-    double safeCellSize = safe_size / grid.info.resolution;
     //!Here we create gird for planner to plan on
 
-    _x = 0; _y = 0;
-    for (int y = std::max(int(robot_pose.pose.position.y - minSize/2), 0); y < std::min(int(robot_pose.pose.position.y + minSize/2), int(grid.info.height)); ++y){
-        for (int x = std::max(int(robot_pose.pose.position.x - minSize/2), 0); x < std::min(int(robot_pose.pose.position.x + minSize/2), int(grid.info.width)); ++x){
-            if (map.getDistance(_x, _y) < robotCellSize) grid.data[y * grid.info.width + x] = 100;
-            ++_x;
+    if(log_level) ROS_INFO_STREAM("Transforming previous grid");
+
+    if(distMapMsg->info.height != grid.info.height || distMapMsg->info.width != grid.info.width) ROS_WARN_STREAM("Heights or widths do not correspond!");
+
+    auto y_max = std::min(grid.info.height, distMapMsg->info.height);
+    auto x_max = std::min(grid.info.width, distMapMsg->info.width);
+//
+//    ROS_INFO_STREAM(grid.info);
+
+    for (int y = 0; y < grid.info.height; ++y){
+        for (int x = 0; x < grid.info.width; ++x){
+            if (distMapMsg->data[y * grid.info.width + x] < robotCellSize && grid.data[(grid.info.height-y-1) * grid.info.width + x] != -1) grid.data[(grid.info.height-y-1) * grid.info.width + x] = 100;
+            costmap.data[(grid.info.height-y-1) * grid.info.width + x] = int(distMapMsg->data[y * distMapMsg->info.width + x]);
         }
-        _x = 0;
-        ++_y;
     }
 
-
-
-    _x = 0; _y = 0;
-    for (int y = std::max(int(robot_pose.pose.position.y - minSize/2), 0); y < std::min(int(robot_pose.pose.position.y + minSize/2), int(grid.info.height)); ++y){
-        for (int x = std::max(int(robot_pose.pose.position.x - minSize/2), 0); x < std::min(int(robot_pose.pose.position.x + minSize/2), int(grid.info.width)); ++x){
-            if (map.getDistance(_x, _y) < robotCellSize && map.getDistance(_x, _y) > 0) {
-                costmap.data[y * grid.info.width + x] = int(100 - map.getDistance(_x, _y) * 20 / robotCellSize);
-            }else if (map.getDistance(_x, _y) < safeCellSize && map.getDistance(_x, _y) > robotCellSize){
-                costmap.data[y * grid.info.width + x] = int(80 - (map.getDistance(_x, _y) - robotCellSize) * 30 / (robotCellSize - safeCellSize));
-
-            }else if(map.getDistance(_x, _y) > safeCellSize){
-                costmap.data[y * grid.info.width + x] = int(50*exp(-(map.getDistance(_x, _y) - safeCellSize)));
-            }
-            ++_x;
-        }
-        _x = 0;
-        ++_y;
-    }
+    inflating = false;
 
     publish();
 }
+
 
 void ObstInf::publish(){
     gridPub.publish(grid);
     costmapPub.publish(costmap);
 }
+
+
 int main(int argc, char **argv){
     ros::init(argc, argv, "inflator");
 
-    tf2_ros::Buffer tfBuffer(ros::Duration(5)); //todo: remake with pointers
-    tf2_ros::TransformListener tfListener(tfBuffer);
-
-    ObstInf Inflator(tfBuffer);
+    ObstInf Inflator;
     ros::Rate r(50);
     
     while(ros::ok()){
         ros::spinOnce();
-        if(Inflator.log_level) ROS_WARN_STREAM("No grid received. Waiting");
+//        if(Inflator.log_level) ROS_WARN_STREAM("No grid received. Waiting");
         r.sleep();
     }
 }

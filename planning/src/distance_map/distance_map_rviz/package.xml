@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>distance_map_rviz</name>
+  <version>0.1.0</version>
+  <description>
+    Rviz plugin for the visualization of ditance maps.
+  </description>
+
+  <author email="deray.jeremie@gmail.com">Jeremie Deray</author>
+  <maintainer email="deray.jeremie@gmail.com">Jeremie Deray</maintainer>
+
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>distance_map_msgs</depend>
+  <depend>rviz</depend>
+
+  <build_depend>qtbase5-dev</build_depend>
+  <exec_depend>libqt5-core</exec_depend>
+  <exec_depend>libqt5-widgets</exec_depend>
+
+  <export>
+    <rviz plugin="${prefix}/distance_map_plugin.xml" />
+  </export>
+</package>

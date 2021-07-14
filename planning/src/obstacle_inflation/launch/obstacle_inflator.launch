@@ -4,5 +4,7 @@
 
     <rosparam command="load" file="$(dirname)/../Config/node_config.yaml" ns = "inflation_params"/>
 
+    <include file="$(find distance_map_node)/launch/distance_map.launch" />
+
     <node pkg="obstacle_inflation" name="obstacle_inflation" type="obstacle_inflation" output="screen"/>
 </launch>

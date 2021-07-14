@@ -9,13 +9,13 @@ grid = OccupancyGrid()
 grid.header.frame_id = "map"
 grid.info.resolution = 0.2
 grid.info.origin.orientation.w = 1
-grid.info.height = 512
-grid.info.width = 1024
+grid.info.height = 7
+grid.info.width = 7
 
-orig_x = 150
-orig_y = 150
-size_x = 150
-size_y = 150
+orig_x = 1
+orig_y = 1
+size_x = 5
+size_y = 5
 
 grid.data = np.zeros(grid.info.height*grid.info.width, np.int8)
 for x in range(orig_x, orig_x+size_x):
