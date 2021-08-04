@@ -182,6 +182,7 @@ void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
 
 
 void Planner::needReplan(const std_msgs::Bool::ConstPtr& boolMsg){
+//    ROS_INFO_STREAM("Calling specific function");
         if(boolMsg->data){
             this->replan(false);
         }
@@ -207,6 +208,7 @@ void Planner::getRobotPose() {
 void Planner::replan(bool isCurrentPathFeasible){
     auto old_searchRes = searchRes;
     getRobotPose();
+//    ROS_INFO_STREAM("Replanning with current path: " << (isCurrentPathFeasible ? "Correct" : "Incorrect"));
     if(!isCurrentPathFeasible){
         ROS_INFO_STREAM("Replanning");
         bool planSuccess = plan();
@@ -295,7 +297,45 @@ bool Planner::checkPath() {
     transformPathBack();
     if (path.poses.size() == 0) return false;
 
+
+    for(int i = 0; i < path.poses.size()-1; ++i){
+        auto point1 = path.poses[i];
+        auto point2 = path.poses[i+1];
+        auto dy = point2.position.y - point1.position.y;
+        auto dx = point2.position.x - point1.position.x;
+        auto stepX = dx > 0 ? 1 : -1;
+        auto stepY = dy > 0 ? 1 : -1;
+
+        if(dy == 0){
+
+            for(int s = 0; s < abs(dx); ++s){
+                if(grid.data[point1.position.y*grid.info.width + point1.position.x + s*stepX] > 60) {transformPath(); return false;}
+            }
+            continue;
+        }
+
+        if(dx == 0){
+
+            for(int s = 0; s < abs(dy); ++s){
+                if(grid.data[(point1.position.y + s*stepY)*grid.info.width + point1.position.x] > 60) {transformPath(); return false;}
+            }
+            continue;
+        }
+//        ROS_INFO_STREAM(dx << dy);
+        auto total_steps = std::max(abs(dy), abs(dx));
+
+        stepX = dx / total_steps;
+        stepY = dy / total_steps;
+//        ROS_INFO_STREAM("Total steps: " << total_steps);
+        for(int s = 0; s < total_steps; ++s){
+//            ROS_INFO_STREAM(int(point1.position.y + s*stepY)<< "  " << int(point1.position.x + s*stepX));
+            if(grid.data[int(point1.position.y + s*stepY)*grid.info.width + int(point1.position.x + s*stepX)] > 60) {transformPath(); return false;}
+        }
+
+    }
+
     for(auto point : path.poses){
+
         if(grid.data[point.position.y*grid.info.width + point.position.x] > 60) {transformPath(); return false;}
 //        if(map.CellIsObstacle(point.position.y, point.position.x)) {transformPath(); return false;}
     }
@@ -314,6 +354,7 @@ void Planner::fillPath(std::list<Node> nodePath){
         point.position.y = node.i;
         path.poses.push_back(point);
     }
+    path.poses[path.size() - 1].orientation = goal.pose.orientation;
 }
 
 void Planner::fillPathVis(){
@@ -344,7 +385,7 @@ void Planner::transformPathBack(){
     geometry_msgs::Pose point;
     for(int i=0; i<path.poses.size(); ++i) {
         point = path.poses[i];
-        point = transformPoseToTargetFrame(point, path.header.frame_id, globalFrame);
+        point = transformPoseToTargetFrame(point, path.header.frame_id, grid.header.frame_id);
 
         point = rescaleToGrid(point);
 
