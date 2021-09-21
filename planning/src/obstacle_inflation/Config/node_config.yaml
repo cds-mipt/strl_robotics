@@ -1,12 +1,12 @@
 {
   costmap_topic: "costmap",
-  grid_topic: "grid",
+  grid_topic: "grid_inflated",
   raw_grid_topic: "rtabmap/grid_map",
-#  raw_grid_topic: "simple_grid",
+#  raw_grid_topic: "grid",
   robot_size: 0.5,
-  safe_size: 0.6,
+  safe_size: 0.8,
   grid_size: 500,
   log_level: 1, #Either 0 or 1 for empty log and full log respectively\
-  global_frame: "map",
+  global_frame: "local_map_lidar",
   base_frame: "base_link"
 }

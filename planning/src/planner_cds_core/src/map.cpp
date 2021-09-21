@@ -29,7 +29,12 @@ bool Map::CellIsTraversable(int i, int j) const
 
 bool Map::CellIsObstacle(int i, int j) const
 {
-    return (Grid[i][j] != CN_GC_NOOBS);
+    return (Grid[i][j] > 50);
+}
+
+bool Map::CellIsWall(int i ,int j) const
+{
+    return (Grid[i][j] == 100);
 }
 
 bool Map::CellOnGrid(int i, int j) const
@@ -335,7 +340,7 @@ bool Map::getMap(const nav_msgs::OccupancyGrid::ConstPtr& grid){
     }
 
     for (int i = 0; i < grid->data.size(); i++){
-        Grid[int(i/width)][int(i%width)] = (grid->data[i] == -1 ? 0 : int(grid->data[i]>50));
+        Grid[int(i/width)][int(i%width)] = (grid->data[i] == -1 ? 0 : int(grid->data[i]));
     }
     return true;
 }

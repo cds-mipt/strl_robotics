@@ -133,6 +133,7 @@ void ObstInf::inflate(const distance_map_msgs::DistanceMap::ConstPtr& distMapMsg
 
     if(!grid.info.resolution) return;
     double robotCellSize = robot_size / grid.info.resolution;
+    double safeCellSize = safe_size / grid.info.resolution;
     //!Here we create gird for planner to plan on
 
     if(log_level) ROS_INFO_STREAM("Transforming previous grid");
@@ -146,7 +147,13 @@ void ObstInf::inflate(const distance_map_msgs::DistanceMap::ConstPtr& distMapMsg
 
     for (int y = 0; y < grid.info.height; ++y){
         for (int x = 0; x < grid.info.width; ++x){
-            if (distMapMsg->data[y * grid.info.width + x] < robotCellSize && grid.data[(grid.info.height-y-1) * grid.info.width + x] != -1) grid.data[(grid.info.height-y-1) * grid.info.width + x] = 100;
+            if (distMapMsg->data[y * grid.info.width + x] < robotCellSize &&
+                grid.data[(grid.info.height-y-1) * grid.info.width + x] != -1) grid.data[(grid.info.height-y-1) * grid.info.width + x] = 100;
+
+            if (distMapMsg->data[y * grid.info.width + x] > robotCellSize &&
+                distMapMsg->data[y * grid.info.width + x] < safeCellSize &&
+                grid.data[(grid.info.height-y-1) * grid.info.width + x] != -1) grid.data[(grid.info.height-y-1) * grid.info.width + x] = 60;
+
             costmap.data[(grid.info.height-y-1) * grid.info.width + x] = int(distMapMsg->data[y * distMapMsg->info.width + x]);
         }
     }

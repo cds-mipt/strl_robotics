@@ -29,6 +29,8 @@ private:
     ros::Publisher      trajPub;
     ros::Publisher      visTrajPub;
 
+//    ros::Subscriber     odomSub;
+
     tf2_ros::Buffer&                tfBuffer;
 
     nav_msgs::Odometry              odom;
@@ -62,6 +64,7 @@ public:
     void needReplan(const std_msgs::Bool::ConstPtr& boolMsg);
 
     void getRobotPose();
+//    void getRobotPose(const nav_msgs::Odometry::ConstPtr& odomMsg);
     bool plan();
     void replan(bool isCurrentPathFeasible);
     bool checkPath();
@@ -70,6 +73,8 @@ public:
     void transformPath();
     void transformPathBack();
     void publish();
+    bool freeRobot();
+
     geometry_msgs::Pose transformPoseToTargetFrame(geometry_msgs::Pose poseIn, std::string poseFrame, std::string targetFrame);
     geometry_msgs::Pose rescaleToGrid(geometry_msgs::Pose Pose);
     geometry_msgs::Pose rescaleFromGrid(geometry_msgs::Pose Pose);
@@ -130,6 +135,12 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
                                                                                  50,
                                                                                  &Planner::needReplan,
                                                                                  this);
+
+//    odomSub                     = nh.subscribe<nav_msgs::Odometry>             ("lol_odom",
+//                                                                                 50,
+//                                                                                 &Planner::getRobotPose,
+//                                                                                 this);
+
 
     trajPub                     = nh.advertise<geometry_msgs::PoseArray>        (pathTopic,
                                                                                 50);
@@ -204,10 +215,18 @@ void Planner::getRobotPose() {
     this->odom.pose.pose.orientation = transform.transform.rotation;
 }
 
+//void Planner::getRobotPose(const nav_msgs::Odometry::ConstPtr& odomMsg) {
+//    this->odom = *odomMsg;
+//}
+
 
 void Planner::replan(bool isCurrentPathFeasible){
     auto old_searchRes = searchRes;
+
+    /////////////////////////////////
     getRobotPose();
+    /////////////////////////////////
+
 //    ROS_INFO_STREAM("Replanning with current path: " << (isCurrentPathFeasible ? "Correct" : "Incorrect"));
     if(!isCurrentPathFeasible){
         ROS_INFO_STREAM("Replanning");
@@ -232,7 +251,10 @@ void Planner::replan(bool isCurrentPathFeasible){
 bool Planner::plan() {
     XmlLogger *logger = new XmlLogger("nope");
     const EnvironmentOptions options;
+
+    /////////////////////////////////////
     getRobotPose();
+    /////////////////////////////////////
 
     transformedGoal = rescaleToGrid(transformPoseToTargetFrame(goal.pose, goal.header.frame_id, grid.header.frame_id));
 
@@ -245,12 +267,23 @@ bool Planner::plan() {
         transformedGoal.position.x = (transformedGoal.position.x >= map.width ? map.width-1 : transformedGoal.position.x);
     }
 
+
+
     map.setGoal(int(transformedGoal.position.y),
                 int(transformedGoal.position.x));
 
     auto transformedOdom = rescaleToGrid(transformPoseToTargetFrame(odom.pose.pose, odom.header.frame_id, grid.header.frame_id));
     map.setStart(int(transformedOdom.position.y),
                  int(transformedOdom.position.x));
+
+
+    if(map.CellIsObstacle(map.start_i, map.start_j)){
+        ROS_WARN_STREAM("Start pose is dangerously close to obstacle. Pretending to find a way to free space.");
+        if(!freeRobot()){
+            ROS_ERROR_STREAM("Wrong start coordinates! Interrupting");
+            return false;
+        }
+    }
 
     ROS_INFO_STREAM("Start position is: " << map.start_i << "  " << map.start_j);
     ROS_INFO_STREAM("Goal position is: " << map.goal_i << "  " << map.goal_j);
@@ -264,7 +297,8 @@ bool Planner::plan() {
         ROS_WARN_STREAM("Wrong goal coordinates! Interrupting");
         return false;
     }
-    if (map.CellIsObstacle(map.start_i, map.start_j)) {
+
+    if (map.CellIsWall(map.start_i, map.start_j)) {
         ROS_WARN_STREAM("Error! Start cell is not traversable. Interrupting");
         return false;
     }
@@ -292,10 +326,10 @@ bool Planner::plan() {
 }
 
 bool Planner::checkPath() {
-    if(!map.CellOnGrid(transformedGoal.position.y, transformedGoal.position.x)) return false;
+    if(!map.CellOnGrid(transformedGoal.position.y, transformedGoal.position.x)) {ROS_WARN_STREAM("Goal is not on grid"); return false;}
 
     transformPathBack();
-    if (path.poses.size() == 0) return false;
+    if (path.poses.size() == 0) {ROS_WARN_STREAM("Empty path"); transformPath(); return false;}
 
 
     for(int i = 0; i < path.poses.size()-1; ++i){
@@ -309,7 +343,7 @@ bool Planner::checkPath() {
         if(dy == 0){
 
             for(int s = 0; s < abs(dx); ++s){
-                if(grid.data[point1.position.y*grid.info.width + point1.position.x + s*stepX] > 60) {transformPath(); return false;}
+                if(grid.data[point1.position.y*grid.info.width + point1.position.x + s*stepX] > 60) {ROS_WARN_STREAM("Path is not feasible"); transformPath(); return false;}
             }
             continue;
         }
@@ -317,7 +351,7 @@ bool Planner::checkPath() {
         if(dx == 0){
 
             for(int s = 0; s < abs(dy); ++s){
-                if(grid.data[(point1.position.y + s*stepY)*grid.info.width + point1.position.x] > 60) {transformPath(); return false;}
+                if(grid.data[(point1.position.y + s*stepY)*grid.info.width + point1.position.x] > 60) {ROS_WARN_STREAM("Path is not feasible"); transformPath(); return false;}
             }
             continue;
         }
@@ -329,14 +363,14 @@ bool Planner::checkPath() {
 //        ROS_INFO_STREAM("Total steps: " << total_steps);
         for(int s = 0; s < total_steps; ++s){
 //            ROS_INFO_STREAM(int(point1.position.y + s*stepY)<< "  " << int(point1.position.x + s*stepX));
-            if(grid.data[int(point1.position.y + s*stepY)*grid.info.width + int(point1.position.x + s*stepX)] > 60) {transformPath(); return false;}
+            if(grid.data[int(point1.position.y + s*stepY)*grid.info.width + int(point1.position.x + s*stepX)] > 60) {ROS_WARN_STREAM("Path is not feasible"); transformPath(); return false;}
         }
 
     }
 
     for(auto point : path.poses){
 
-        if(grid.data[point.position.y*grid.info.width + point.position.x] > 60) {transformPath(); return false;}
+        if(grid.data[point.position.y*grid.info.width + point.position.x] > 60) {ROS_WARN_STREAM("Path is not feasible"); transformPath(); return false;}
 //        if(map.CellIsObstacle(point.position.y, point.position.x)) {transformPath(); return false;}
     }
 
@@ -354,7 +388,7 @@ void Planner::fillPath(std::list<Node> nodePath){
         point.position.y = node.i;
         path.poses.push_back(point);
     }
-    path.poses[path.size() - 1].orientation = goal.pose.orientation;
+    path.poses[path.poses.size() - 1].orientation = goal.pose.orientation;
 }
 
 void Planner::fillPathVis(){
@@ -459,7 +493,36 @@ geometry_msgs::Pose Planner::rescaleFromGrid(geometry_msgs::Pose Pose){
     return Pose;
 }
 
+bool Planner::freeRobot(){
 
+    auto startI = map.start_i;
+    auto startJ = map.start_j;
+    int maxSearchDist = 20;
+    std::pair<int,int> closestDir (0,0);
+    for(int di = -1; di < 2; ++di){
+        for(int dj = -1; dj < 2; ++dj){
+            startI = map.start_i;
+            startJ = map.start_j;
+            for(int d = 0; d < maxSearchDist; ++d){
+                if(!map.CellIsObstacle(map.start_i + d*di, map.start_j + d*dj)){
+                    if (d < maxSearchDist){
+                        maxSearchDist = d;
+                        closestDir.first = di;
+                        closestDir.second = dj;
+                    }
+                }
+                if(map.CellIsWall(map.start_i + d*di, map.start_j + d*dj)){
+                   break;
+                }
+            }
+        }
+    }
+    if (closestDir.first == 0 && closestDir.second == 0) return false;
+    ROS_INFO_STREAM("Prev start position is: " << map.start_i << "  " << map.start_j);
+    map.start_i = map.start_i + closestDir.first * maxSearchDist;
+    map.start_j = map.start_j + closestDir.second * maxSearchDist;
+    return true;
+}
 
 int main(int argc, char **argv){
     ros::init(argc, argv, "planner");
