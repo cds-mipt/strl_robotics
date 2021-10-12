@@ -26,6 +26,7 @@ private:
     ros::Subscriber     taskSub;
     ros::Subscriber     gridSub;
     ros::Subscriber     replanSub;
+    ros::Subscriber     controlStatusSub;
     ros::Publisher      trajPub;
     ros::Publisher      visTrajPub;
 
@@ -62,6 +63,7 @@ public:
     void setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg);
     void setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg);
     void needReplan(const std_msgs::Bool::ConstPtr& boolMsg);
+    void callBackStatus(const std_msgs::String::ConstPtr& statusMsg);
 
     void getRobotPose();
 //    void getRobotPose(const nav_msgs::Odometry::ConstPtr& odomMsg);
@@ -140,7 +142,10 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
 //                                                                                 50,
 //                                                                                 &Planner::getRobotPose,
 //                                                                                 this);
-
+    controlStatusSub            = nh.subscribe<std_msgs::String>                ("status",
+                                                                                 50,
+                                                                                 &Planner::callBackStatus,
+                                                                                 this);
 
     trajPub                     = nh.advertise<geometry_msgs::PoseArray>        (pathTopic,
                                                                                 50);
@@ -199,6 +204,13 @@ void Planner::needReplan(const std_msgs::Bool::ConstPtr& boolMsg){
         }
     }
 
+void Planner::callBackStatus(const std_msgs::String::ConstPtr& statusMsg){
+    if (statusMsg->data == "reached"){
+        return;
+    }else if (statusMsg->data == "replan"){
+        return;
+    }
+}
 
 void Planner::getRobotPose() {
     geometry_msgs::TransformStamped transform;
@@ -321,7 +333,7 @@ bool Planner::plan() {
     fillPath(*nodePath);
     transformPath();
     fillPathVis();
-
+    if(logger) delete logger;
     return true;
 }
 
