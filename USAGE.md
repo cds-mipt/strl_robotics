@@ -137,7 +137,7 @@ SOLO запускается с помощью четырех bash_scripts в ч�
 
 ## Этап 4. Запуск узла нажатия
 
-pre><code>
+<pre><code>
 <b>cpr-fssl01$</b> cd Repos/manipulator/catkin_ws/
 <b>cpr-fssl01$</b> source devel/setup.bash
 <b>cpr-fssl01$</b> python3 src/manipulator/src/press_rtde.py
