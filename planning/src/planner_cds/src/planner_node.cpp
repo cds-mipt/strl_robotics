@@ -30,7 +30,7 @@ private:
     ros::Subscriber     controlStatusSub;
     ros::Publisher      trajPub;
     ros::Publisher      visTrajPub;
-
+    ros::Publisher      plannerStatusPub;
 //    ros::Subscriber     odomSub;
 
     tf2_ros::Buffer&                tfBuffer;
@@ -143,10 +143,13 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
 //                                                                                 50,
 //                                                                                 &Planner::getRobotPose,
 //                                                                                 this);
-    controlStatusSub            = nh.subscribe<std_msgs::String>                ("status",
+    controlStatusSub            = nh.subscribe<std_msgs::String>                ("control_status",
                                                                                  50,
                                                                                  &Planner::callBackStatus,
                                                                                  this);
+
+    plannerStatusPub            = nh.advertise<std_msgs::String>                ("planner_status",
+                                                                                 50);
 
     trajPub                     = nh.advertise<geometry_msgs::PoseArray>        (pathTopic,
                                                                                 50);
@@ -173,15 +176,19 @@ Planner::Planner(tf2_ros::Buffer& _tfBuffer): tfBuffer(_tfBuffer){
 void Planner::setTask(const geometry_msgs::PoseStamped::ConstPtr& goalMsg) {
     taskSet = true;
     this->goal = *goalMsg;
+//    plan();
+//    publish();
     if(gridSet){
         if(!plan()) ROS_WARN_STREAM("Planning error! Resulted path is empty.");
         publish();
+        ROS_INFO_STREAM("Going to plan");
     }else{
         ROS_WARN_STREAM("No grid received! Cannot set task.");
     }
 }
 
 void Planner::setGrid(const nav_msgs::OccupancyGrid::ConstPtr& gridMsg) {
+//    gridSet = true;
     if (gridMsg->data.size() != 0) {
         this->grid = *gridMsg;
         if (map.getMap(gridMsg)) {
@@ -207,9 +214,11 @@ void Planner::needReplan(const std_msgs::Bool::ConstPtr& boolMsg){
 
 void Planner::callBackStatus(const std_msgs::String::ConstPtr& statusMsg){
     if (statusMsg->data == "reached"){
-        return;
+        std_msgs::String status;
+        status.data = "reached";
+        plannerStatusPub.publish(status);
     }else if (statusMsg->data == "replan"){
-        return;
+        this->replan(false);
     }
 }
 

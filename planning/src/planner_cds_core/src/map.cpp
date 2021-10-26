@@ -29,7 +29,7 @@ bool Map::CellIsTraversable(int i, int j) const
 
 bool Map::CellIsObstacle(int i, int j) const
 {
-    return (Grid[i][j] > 50);
+    return (Grid[i][j] > 60);
 }
 
 bool Map::CellIsWall(int i ,int j) const
@@ -329,9 +329,16 @@ int Map::getValue(int i, int j) const
 }
 
 bool Map::getMap(const nav_msgs::OccupancyGrid::ConstPtr& grid){
+
+    for (int i = 0 ; i < height; ++i){
+        if(Grid[i]) delete Grid[i];
+    }
+    if (Grid) delete Grid;
+
     height = grid->info.height;
     width = grid->info.width;
     cellSize = grid->info.resolution;
+
 
     Grid = new int*[height];
     for(int i = 0; i < height; ++i)
