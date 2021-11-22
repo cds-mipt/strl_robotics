@@ -29,7 +29,7 @@ bool Map::CellIsTraversable(int i, int j) const
 
 bool Map::CellIsObstacle(int i, int j) const
 {
-    return (Grid[i][j] > 60);
+    return (Grid[i][j] > 50);
 }
 
 bool Map::CellIsWall(int i ,int j) const

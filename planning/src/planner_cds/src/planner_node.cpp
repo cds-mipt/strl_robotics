@@ -350,6 +350,11 @@ bool Planner::plan() {
 bool Planner::checkPath() {
     if(!map.CellOnGrid(transformedGoal.position.y, transformedGoal.position.x)) {ROS_WARN_STREAM("Goal is not on grid"); return false;}
 
+    if (map.CellIsObstacle(map.goal_i, map.goal_j)) {
+        ROS_WARN_STREAM("Error! Goal cell is not traversable. Replanning");
+        return false;
+    }
+
     transformPathBack();
     if (path.poses.size() == 0) {ROS_WARN_STREAM("Empty path"); transformPath(); return false;}
 
@@ -365,7 +370,14 @@ bool Planner::checkPath() {
         if(dy == 0){
 
             for(int s = 0; s < abs(dx); ++s){
-                if(grid.data[point1.position.y*grid.info.width + point1.position.x + s*stepX] > 60) {ROS_WARN_STREAM("Path is not feasible"); transformPath(); return false;}
+                if(grid.data[point1.position.y*grid.info.width + point1.position.x + s*stepX] > 50){
+                    ROS_WARN_STREAM("Path is not feasible. Error on point: " +
+                                    std::to_string(point1.position.y) + " " +
+                                    std::to_string(point1.position.x));
+//                    ROS_WARN_STREAM("1");
+                    transformPath();
+                    return false;
+                }
             }
             continue;
         }
@@ -373,7 +385,13 @@ bool Planner::checkPath() {
         if(dx == 0){
 
             for(int s = 0; s < abs(dy); ++s){
-                if(grid.data[(point1.position.y + s*stepY)*grid.info.width + point1.position.x] > 60) {ROS_WARN_STREAM("Path is not feasible"); transformPath(); return false;}
+                if(grid.data[(point1.position.y + s*stepY)*grid.info.width + point1.position.x] > 50){
+                    ROS_WARN_STREAM("Path is not feasible. Error on point: " +
+                                    std::to_string(point1.position.y) + " " +
+                                    std::to_string(point1.position.x));
+//                    ROS_WARN_STREAM("2");
+                    transformPath();
+                    return false;}
             }
             continue;
         }
@@ -385,14 +403,20 @@ bool Planner::checkPath() {
 //        ROS_INFO_STREAM("Total steps: " << total_steps);
         for(int s = 0; s < total_steps; ++s){
 //            ROS_INFO_STREAM(int(point1.position.y + s*stepY)<< "  " << int(point1.position.x + s*stepX));
-            if(grid.data[int(point1.position.y + s*stepY)*grid.info.width + int(point1.position.x + s*stepX)] > 60) {ROS_WARN_STREAM("Path is not feasible"); transformPath(); return false;}
+            if(grid.data[int(point1.position.y + s*stepY)*grid.info.width + int(point1.position.x + s*stepX)] > 50){
+                ROS_WARN_STREAM("Path is not feasible. Error on point: " +
+                                std::to_string(point1.position.y) + " " +
+                                std::to_string(point1.position.x));
+//                ROS_WARN_STREAM("3");
+                transformPath();
+                return false;}
         }
 
     }
 
     for(auto point : path.poses){
 
-        if(grid.data[point.position.y*grid.info.width + point.position.x] > 60) {ROS_WARN_STREAM("Path is not feasible"); transformPath(); return false;}
+        if(grid.data[point.position.y*grid.info.width + point.position.x] > 50) {ROS_WARN_STREAM("Path is not feasible"); transformPath(); return false;}
 //        if(map.CellIsObstacle(point.position.y, point.position.x)) {transformPath(); return false;}
     }
 
