@@ -18,7 +18,7 @@ EXPOSE 22
 # Install Miniconda3
 ENV CONDADIR /opt/miniconda3
 ENV CONDAEXE ${CONDADIR}/bin/conda
-RUN apt-get update && apt-get install -y wget \
+RUN apt-get update &&  apt-get install -y wget \
     && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh 2>/dev/null \
     && bash Miniconda3-latest-Linux-x86_64.sh -b -p ${CONDADIR} \
     && useradd -m anaconda --uid=6666 && echo "anaconda:anaconda" | chpasswd \
@@ -54,6 +54,7 @@ RUN apt-get update && apt-get install -y \
     vim \
     curl \
     wget \
+    nano \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
@@ -102,9 +103,9 @@ RUN python -m pip --no-cache-dir install "git+https://github.com/cocodataset/coc
 # Create conda environment
 USER ${USER}
 RUN ${CONDAEXE} create -n solo python=3.7 -y
-RUN ${CONDAEXE} config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
-RUN ${CONDAEXE} config --set show_channel_urls yes
-RUN ${CONDAEXE} install -n solo pytorch torchvision cudatoolkit=11.0
+RUN ${CONDAEXE} run -n solo python -m pip --no-cache-dir install torch==1.8.0+cu111 \
+                                                            torchvision==0.9.0+cu111  \
+                                                            -f https://download.pytorch.org/whl/torch_stable.html
 COPY requirements/build.txt requirements.txt
 RUN ${CONDAEXE} run -n solo python -m pip --no-cache-dir install -r requirements.txt
 RUN ${CONDAEXE} run -n solo python -m pip --no-cache-dir install "git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI"
@@ -113,3 +114,19 @@ USER root
 
 # Finally copy the code and install. Do it always at the end of Dockerfile
 COPY --chown=${USER}:${USER} . /home/${USER}/catkin_ws/src/solov2
+#RUN ${CONDAEXE} run -n solo python -m pip install --no-cache-dir -e /home/docker_solo/catkin_ws/src/solov2
+# RUN python -m pip install scipy
+
+RUN ${CONDAEXE} run -n solo python -m pip uninstall -y pycocotools
+RUN ${CONDAEXE} run -n solo python -m pip install pycocotools==2.0.1
+
+RUN ${CONDAEXE} run -n solo python -m pip install --no-cache-dir -e /home/docker_solo/catkin_ws/src/solov2
+
+#WORKDIR /home/${USER}/catkin_ws
+
+#RUN git clone https://gitlab.com/sdbcs-nio3/itl_mipt/ros_common/camera_objects_msgs.git src/camera_objects_msgs
+#RUN git clone https://gitlab.com/sdbcs-nio3/itl_mipt/ros_common/camera_objects_visualizer.git src/camera_objects_visualizer
+
+#RUN source /opt/ros/melodic/setup.bash
+#RUN catkin_make
+#RUN source devel/setup.bash
