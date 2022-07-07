@@ -1,0 +1,8 @@
+<launch>
+
+
+
+    <rosparam command="load" file="$(dirname)/../config/node_config.yaml" ns = "basic_mover"/>
+
+    <node pkg="basic_text_mover" name="basic_text_mover" type="basic_text_mover" output="screen"/>
+</launch>

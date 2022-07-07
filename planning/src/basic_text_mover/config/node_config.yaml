@@ -1,0 +1,7 @@
+{
+  cmd_topic: "cmd_vel",
+  max_linear_velocity: 0.5,
+  max_angular_velocity: 0.5,
+  publish_rate: 10,
+}
+
