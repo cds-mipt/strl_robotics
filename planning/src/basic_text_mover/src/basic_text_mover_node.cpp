@@ -70,28 +70,28 @@ void Mover::applyMove(const std_msgs::String::ConstPtr &moveMsg) {
     double timeLimit(0);
 
     if (moveMsg->data == t90c) {
-        velocity.angular.z = maxAngularVelocity;
+        velocity.angular.z = -maxAngularVelocity;
         timeLimit = 6.28 / (velocity.angular.z * 4);
     } else if (moveMsg->data == t180c) {
-        velocity.angular.z = maxAngularVelocity;
+        velocity.angular.z = -maxAngularVelocity;
         timeLimit = 6.28 / (velocity.angular.z * 2);
     } else if (moveMsg->data == t270c) {
-        velocity.angular.z = maxAngularVelocity;
+        velocity.angular.z = -maxAngularVelocity;
         timeLimit = 6.28 / (velocity.angular.z * 4 / 3);
     } else if (moveMsg->data == t360c) {
-        velocity.angular.z = maxAngularVelocity;
+        velocity.angular.z = -maxAngularVelocity;
         timeLimit = 6.28 / (velocity.angular.z * 1);
     } else if (moveMsg->data == t90cc) {
-        velocity.angular.z = -maxAngularVelocity;
+        velocity.angular.z = maxAngularVelocity;
         timeLimit = 6.28 / (-velocity.angular.z * 4);
     } else if (moveMsg->data == t180cc) {
-        velocity.angular.z = -maxAngularVelocity;
+        velocity.angular.z = maxAngularVelocity;
         timeLimit = 6.28 / (-velocity.angular.z * 2);
     } else if (moveMsg->data == t270cc) {
-        velocity.angular.z = -maxAngularVelocity;
+        velocity.angular.z = maxAngularVelocity;
         timeLimit = 6.28 / (-velocity.angular.z * 4 / 3);
     } else if (moveMsg->data == t360cc) {
-        velocity.angular.z = -maxAngularVelocity;
+        velocity.angular.z = maxAngularVelocity;
         timeLimit = 6.28 / (-velocity.angular.z * 1);
     } else if (moveMsg->data == fwd1) {
         velocity.linear.x = maxLinearVelocity;
