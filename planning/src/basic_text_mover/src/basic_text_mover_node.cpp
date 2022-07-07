@@ -101,10 +101,10 @@ void Mover::applyMove(const std_msgs::String::ConstPtr &moveMsg) {
         timeLimit = 2.0 / velocity.linear.x;
     } else if (moveMsg->data == bckwd1) {
         velocity.linear.x = -maxLinearVelocity;
-        timeLimit = 1.0 / velocity.linear.x;
+        timeLimit = 1.0 / -velocity.linear.x;
     } else if (moveMsg->data == bckwd2) {
         velocity.linear.x = -maxLinearVelocity;
-        timeLimit = 2.0 / velocity.linear.x;
+        timeLimit = 2.0 / -velocity.linear.x;
     } else
         ROS_WARN_STREAM("Unknown command \"" << moveMsg->data << "\"");
 
