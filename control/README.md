@@ -21,8 +21,9 @@
 ## Запуск
 
 Для тестировать движение с алгоритмом Path Following нужно написать ROS команду
-* roslaunch controller_node control_real.launch
-
+```
+roslaunch controller_node control_real.launch
+```
 
 ## Тестирование
 Результаты текущего тестирования доступны по ссылки
