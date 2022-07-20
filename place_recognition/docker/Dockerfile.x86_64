@@ -22,6 +22,10 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libxext6 \
     libeigen3-dev \
     libboost-all-dev \
+    libssl-dev \
+    libblas-dev \
+    liblapack-dev \
+    swig \
     && rm -rf /var/lib/apt/lists/*
 
 
@@ -30,7 +34,18 @@ RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install torch==1.9.1+cu111 torchvision==0.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 
 
-# TODO: install faiss-gpu https://github.com/facebookresearch/faiss/blob/main/INSTALL.md 
+# Install latest cmake from source (need to compile faiss)
+RUN wget -q https://github.com/Kitware/CMake/archive/refs/tags/v3.22.1.tar.gz \
+    && tar -xzf v3.22.1.tar.gz && rm v3.22.1.tar.gz && cd CMake-3.22.1 \
+    && ./bootstrap && make -j4 && make -j4 install
+
+# install faiss
+RUN wget -q https://github.com/facebookresearch/faiss/archive/refs/tags/v1.7.2.tar.gz \
+    && tar -xzf v1.7.2.tar.gz && rm v1.7.2.tar.gz && cd faiss-1.7.2 \
+    && cmake -DCMAKE_BUILD_TYPE=Release -B build . \
+    && make -C build -j4 faiss \
+    && make -C build -j4 swigfaiss \
+    && (cd build/faiss/python && python3 setup.py install)
 
 # Install ROS1 Noetic
 RUN apt-get update && apt-get install --no-install-recommends -y \
