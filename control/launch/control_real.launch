@@ -1,5 +1,5 @@
 <launch>
     <node name="controller_node" pkg="controller_node" type="controller_node" output="screen">
     </node>
-    <rosparam command="load" file="$(find controller_node)/config/config_real.yaml"/>
+    <rosparam command="load" file="$(find controller_node)/config/config_control.yaml"/>
 </launch>
