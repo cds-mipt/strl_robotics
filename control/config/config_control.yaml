@@ -5,7 +5,7 @@ global_frame: 'local_map_lidar'
 base_frame: 'base_link'
 odometry_topic: 'lol_odom'
 status_topic: 'control_status'
-max_v: 0.65
+max_v: 0.55
 min_v: 0
 acc_v: 0.08
 max_w: 0.3
