@@ -10,7 +10,8 @@ The control node depends on path following method which provides tracking the pa
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <tf/transform_listener.h>
-#include <geometry_msgs/Pose2D.h>
+#include <geometry_msgs/Pose2D.h> 
+#include <geometry_msgs/Vector3Stamped.h>
 #include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/TransformStamped.h>
 #include "visualization_msgs/Marker.h"
@@ -167,6 +168,7 @@ double distance_to_path(double x1, double x2 , double y1 , double y2);
 // to set saturation on the linear velocity of the robot
 double sat_linear_velocity(double max , double min ,double accel, double v_ref , double old_velocity);
 
+int ind_control = 0;
 
 void path_back1(const geometry_msgs::PoseArray msg) 
 {
@@ -306,13 +308,17 @@ void get_line_equation(double x1, double x2 , double y1 , double y2, double odmx
 
 void odom_back(const nav_msgs::Odometry msg) {
 
+
   /*  tf::pointMsgToTF(msg.pose.pose.position, odom_pos);
     odom_theta = tf::getYaw(msg.pose.pose.orientation);
     odom_x=odom_pos.x();
     odom_y=odom_pos.y();*/
   //  double theta = tf::getYaw(msg.pose.pose.orientation);
-  //  v_robot = msg.twist.twist.linear.x * cos(theta) + msg.twist.twist.linear.y * sin(theta);
-    v_robot = msg.twist.twist.linear.x;
+
+   // v_robot = msg.twist.twist.linear.x * cos(odom_theta) + msg.twist.twist.linear.y * sin(odom_theta);
+    
+    v_robot = abs(msg.twist.twist.linear.x);
+   // ROS_INFO("%f" , v_robot);
   //  w_robot = msg.twist.twist.angular.z;
 
                
@@ -390,8 +396,10 @@ void cal_average_max(int g)
 void path_following_controller()
 {
 
+    ROS_INFO("kv siz ind errors %i %i %i %f %f %f %f" , k_v , size_path , ind_control, dist_error , angle_error , v_cmd , v_robot);
+
     //  DECREASING
-    if (k_v == size_path-1 && dist_error<1.5)// && abs(angle_error)<=0.25 && v_cmd>0.3)  // decreasing
+    if (k_v == size_path-1 && dist_error<1.5 && v_cmd>0.3)// && abs(angle_error)<=0.25 && v_cmd>0.3)  // decreasing
     {
         max_v_local=v_cmd;
         if (max_v_local>0.3)
@@ -399,6 +407,7 @@ void path_following_controller()
             max_v_local=max_v_local-0.04;
         }
         v_cmd = sat_linear_velocity(max_v_local,min_v,acc_v ,dist_error, v_cmd);
+        ind_control = 1;
     }
     else
     {
@@ -407,31 +416,37 @@ void path_following_controller()
         {
             v_cmd = sat_linear_velocity(max_v,0,acc_v,dist_error , v_cmd);
             w_cmd = angle_error;
+            ind_control = 2;
         }
         else if(abs(angle_error)>=0.1 && abs(angle_error)<0.4)  // case error angle small
         {
             v_cmd = sat_linear_velocity(max_v-0.1,0,acc_v,dist_error , v_cmd);
             w_cmd = 1*angle_error;
+            ind_control = 3;
         }
         else if(abs(angle_error)>=0.4 && abs(angle_error)<0.75)  // case error angle medium
         {
             v_cmd = sat_linear_velocity(max_v-0.2,0,acc_v,dist_error , v_cmd);
             w_cmd = 1*angle_error;
+            ind_control = 4;
         }
         else if(abs(angle_error)>=0.75 && abs(angle_error)<1.1)  // case error angle big
         {
             v_cmd = sat_linear_velocity(max_v-0.3,0,acc_v,dist_error , v_cmd);
             w_cmd = 1*angle_error;
+            ind_control = 5;
         }
         else if(abs(angle_error)>=1.1 && abs(angle_error)<1.4)  // case angle error very big
         {
             v_cmd = sat_linear_velocity(max_v-0.45,0,acc_v,dist_error , v_cmd);
-            w_cmd = 1*angle_error;   
+            w_cmd = 1*angle_error;
+            ind_control = 6;   
         }
         else if(abs(angle_error)>=1.4)
         {
             v_cmd = 0;
             w_cmd = 1*angle_error;
+            ind_control = 7;
         }
         
     }
@@ -443,6 +458,7 @@ void path_following_controller()
         v_cmd = 0;
     //    ROS_INFO("STOP vel 2 %f " , v_cmd);
         w_cmd = 1*angle_error;
+        ind_control = 8;
     }
     if(w_cmd>max_w)
     {w_cmd = max_w;}
@@ -816,6 +832,7 @@ int main(int argc, char **argv)
 
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tfListener(tfBuffer);
+    tf::StampedTransform inverse;
 
     ros::Rate loop_rate(10); // ros spins 20 frames per second
 
@@ -836,9 +853,11 @@ int main(int argc, char **argv)
             ros::Duration(1.0).sleep();
             continue;
         }
+
         odom_x = transformStamped.transform.translation.x;
         odom_y = transformStamped.transform.translation.y;
         odom_theta = get_yaw(transformStamped.transform.rotation);
+
 
         if (path_stored) 
         {
@@ -855,7 +874,7 @@ int main(int argc, char **argv)
             tw_msg.linear.x=0;
             tw_msg.angular.z=0;
            // ROS_INFO("PATH COMPLETED. Set a new path!");
-            if (false) //correct_orient_at_last_point
+            if (correct_orient_at_last_point) 
             {
                 rotation_to_lift();
             }
@@ -863,10 +882,12 @@ int main(int argc, char **argv)
             reset_parameters();
         }
 
-        if (abs(v_cmd-v_robot)>0.4)
+        // to start smoothly in case emergency stop
+        if (abs(v_robot)<0.06 && abs(v_cmd-v_robot)>0.4)
         {
             v_cmd = 0;
             tw_msg.linear.x = v_cmd;
+            ind_control = 9;
         }
 
         cmd_pub.publish(tw_msg); 
