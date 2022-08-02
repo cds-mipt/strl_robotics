@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
-
 import torchvision.models as models
 import torch.nn as nn
 import torch.nn.functional as F
@@ -43,6 +42,20 @@ class L2Norm(nn.Module):
 
     def forward(self, input_data):
         return F.normalize(input_data, p=2, dim=self.dim)
+
+
+class FeatureExtractor(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.encoder = model.encoder
+        self.pool = model.pool
+        self.WPCA = model.WPCA
+
+    def forward(self, input_data):
+        x = self.encoder(input_data)
+        x = self.pool(x)
+        x = self.WPCA(x.unsqueeze(-1).unsqueeze(-1))
+        return x
 
 
 def get_pca_encoding(model, vlad_encoding):
@@ -91,5 +104,9 @@ def get_model(encoder, encoder_dim, config, append_pca_layer=False):
 
         pca_conv = nn.Conv2d(netvlad_output_dim, num_pcs, kernel_size=(1, 1), stride=1, padding=0)
         nn_model.add_module('WPCA', nn.Sequential(*[pca_conv, Flatten(), L2Norm(dim=-1)]))
+    else:
+        nn_model.add_module('WPCA', nn.Identity())
 
-    return nn_model
+    net = FeatureExtractor(nn_model)
+
+    return net

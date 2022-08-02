@@ -31,6 +31,6 @@ xhost +
         --name strl_place_recognition \
         --net host \
         -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-        -v `pwd`/../:/home/docker_place_recognition/catkin_ws/src/place_recognition:rw \
+        -v `pwd`/../place_recognition/:/home/docker_place_recognition/catkin_ws/src/place_recognition:rw \
         ${ARCH}noetic/strl_place_recognition:latest
 xhost -

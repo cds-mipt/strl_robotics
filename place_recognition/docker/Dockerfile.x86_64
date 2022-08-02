@@ -66,6 +66,10 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     rosdep update && \
     rm -rf /var/lib/apt/lists/*
 
+# Install pip requirements
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt \
+    && rm requirements.txt
 
 # add user and his password
 ARG USER=docker_place_recognition

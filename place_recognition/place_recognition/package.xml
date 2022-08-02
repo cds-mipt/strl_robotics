@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>place_recognition</name>
+  <version>0.0.1</version>
+  <description>The STRL framework place_recognition package</description>
+
+  <maintainer email="melekhin.aa@mipt.ru">Alexander Melekhin</maintainer>
+
+  <license>MIT</license>
+
+  <url type="github">https://github.com/cds-mipt/strl_robotics</url>
+
+  <author email="melekhin.aa@mipt.ru">Alexander Melekhin</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>message_filters</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  
+  <build_export_depend>cv_bridge</build_export_depend>
+  <build_export_depend>geometry_msgs</build_export_depend>
+  <build_export_depend>message_filters</build_export_depend>
+  <build_export_depend>nav_msgs</build_export_depend>
+  <build_export_depend>rospy</build_export_depend>
+  <build_export_depend>sensor_msgs</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>message_filters</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>
