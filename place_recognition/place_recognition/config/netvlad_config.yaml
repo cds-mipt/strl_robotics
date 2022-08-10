@@ -1,4 +1,4 @@
-enable_cuda: False
+enable_cuda: True
 
 database:
   root_dir: '/home/docker_place_recognition/reference_db/1st_floor_extracted'
