@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>rtabmap</name>
-  <version>0.20.9</version>
+  <version>0.20.13</version>
   <description>RTAB-Map's standalone library. RTAB-Map is a RGB-D SLAM approach with real-time constraints.</description>
   <maintainer email="matlabbe@gmail.com">Mathieu Labbe</maintainer>
   <author>Mathieu Labbe</author>
@@ -24,6 +24,7 @@
   <build_depend>proj</build_depend>
   <build_depend>octomap</build_depend>
   <build_depend>libg2o</build_depend>
+  <build_depend>time_measurer</build_depend>
   
   <run_depend>qt_gui_cpp</run_depend>
   <run_depend>libpcl-all-dev</run_depend> <!--  include libvtk-qt -->
@@ -35,6 +36,7 @@
   <run_depend>cv_bridge</run_depend>
   <run_depend>octomap</run_depend>
   <run_depend>libg2o</run_depend>
+  <run_depend>time_measurer</run_depend>
 
   <export>
 	 <build_type>cmake</build_type>

@@ -220,8 +220,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Mem, InitWMWithAllNodes,          bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
     RTABMAP_PARAM(Mem, DepthAsMask,                 bool, true,     "Use depth image as mask when extracting features for vocabulary.");
     RTABMAP_PARAM(Mem, StereoFromMotion,            bool, false,    uFormat("Triangulate features without depth using stereo from motion (odometry). It would be ignored if %s is true and the feature detector used supports masking.", kMemDepthAsMask().c_str()));
-    RTABMAP_PARAM(Mem, ImagePreDecimation,          int, 1,         "Image decimation (>=1) before features extraction.");
-    RTABMAP_PARAM(Mem, ImagePostDecimation,         int, 1,         "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image.");
+    RTABMAP_PARAM(Mem, ImagePreDecimation,          unsigned int, 1, uFormat("Decimation of the RGB image before visual feature detection. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. If %s is true and if depth is smaller than decimated RGB, depth may be interpolated to match RGB size for feature detection.",kMemDepthAsMask().c_str()));
+    RTABMAP_PARAM(Mem, ImagePostDecimation,         unsigned int, 1, uFormat("Decimation of the RGB image before saving it to database. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. Decimation is done from the original image. If set to same value than %s, data already decimated is saved (no need to re-decimate the image).", kMemImagePreDecimation().c_str()));
     RTABMAP_PARAM(Mem, CompressionParallelized,     bool, true,     "Compression of sensor data is multi-threaded.");
     RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,         "If > 1, downsample the laser scans when creating a signature.");
     RTABMAP_PARAM(Mem, LaserScanVoxelSize,          float, 0.0,     uFormat("If > 0 m, voxel filtering is done on laser scans when creating a signature. If the laser scan had normals, they will be removed. To recompute the normals, make sure to use \"%s\" or \"%s\" parameters.", kMemLaserScanNormalK().c_str(), kMemLaserScanNormalRadius().c_str()));
@@ -347,7 +347,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(VhEp, RansacParam2,  float, 0.99, "Fundamental matrix (see cvFindFundamentalMat()): Performance of RANSAC.");
 
     // RGB-D SLAM
-    RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "");
+    RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "Activate metric SLAM. If set to false, classic RTAB-Map loop closure detection is done using only images and without any metric information.");
     RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.1,  "Minimum linear displacement (m) to update the map. Rehearsal is done prior to this, so weights are still updated.");
     RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.1,  "Minimum angular displacement (rad) to update the map. Rehearsal is done prior to this, so weights are still updated.");
     RTABMAP_PARAM(RGBD, LinearSpeedUpdate,        float, 0.0,  "Maximum linear speed (m/s) to update the map (0 means not limit).");
@@ -356,7 +356,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd,     bool, false, "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest node of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
     RTABMAP_PARAM(RGBD, OptimizeMaxError,         float, 3.0,   uFormat("Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. Not compatible with \"%s\" if enabled.", kOptimizerRobust().c_str()));
     RTABMAP_PARAM(RGBD, MaxLoopClosureDistance,   float, 0.0,   "Reject loop closures/localizations if the distance from the map is over this distance (0=disabled).");
-    RTABMAP_PARAM(RGBD, SavedLocalizationIgnored, bool, false, "Ignore last saved localization pose from previous session. If true, RTAB-Map won't assume it is restarting from the same place than where it shut down previously.");
+    RTABMAP_PARAM(RGBD, StartAtOrigin,            bool, false, uFormat("If true, rtabmap will assume the robot is starting from origin of the map. If false, rtabmap will assume the robot is restarting from the last saved localization pose from previous session (the place where it shut down previously). Used only in localization mode (%s=false).", kMemIncrementalMemory().c_str()));
     RTABMAP_PARAM(RGBD, GoalReachedRadius,        float, 0.5,  "Goal reached radius (m).");
     RTABMAP_PARAM(RGBD, PlanStuckIterations,      int, 0,      "Mark the current goal node on the path as unreachable if it is not updated after X iterations (0=disabled). If all upcoming nodes on the path are unreachabled, the plan fails.");
     RTABMAP_PARAM(RGBD, PlanLinearVelocity,       float, 0,    "Linear velocity (m/sec) used to compute path weights.");
@@ -365,9 +365,10 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(RGBD, MaxLocalRetrieved,        unsigned int, 2, "Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).");
     RTABMAP_PARAM(RGBD, LocalRadius,              float, 10,   "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
     RTABMAP_PARAM(RGBD, LocalImmunizationRatio,   float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");
-    RTABMAP_PARAM(RGBD, ScanMatchingIdsSavedInLinks, bool, true,    "Save scan matching IDs in link's user data.");
+    RTABMAP_PARAM(RGBD, ScanMatchingIdsSavedInLinks, bool, true,    "Save scan matching IDs from one-to-many proximity detection in link's user data.");
     RTABMAP_PARAM(RGBD, NeighborLinkRefining,         bool, false,  uFormat("When a new node is added to the graph, the transformation of its neighbor link to the previous node is refined using registration approach selected (%s).", kRegStrategy().c_str()));
-    RTABMAP_PARAM(RGBD, LoopClosureReextractFeatures, bool, false,  "Extract features even if there are some already in the nodes.");
+    RTABMAP_PARAM(RGBD, LoopClosureIdentityGuess,     bool, false,  uFormat("Use Identity matrix as guess when computing loop closure transform, otherwise no guess is used, thus assuming that registration strategy selected (%s) can deal with transformation estimation without guess.", kRegStrategy().c_str()));
+    RTABMAP_PARAM(RGBD, LoopClosureReextractFeatures, bool, false,  "Extract features even if there are some already in the nodes. Raw features are not saved in database.");
     RTABMAP_PARAM(RGBD, LocalBundleOnLoopClosure,     bool, false,  "Do local bundle adjustment with neighborhood of the loop closure.");
     RTABMAP_PARAM(RGBD, CreateOccupancyGrid,          bool, false,  "Create local occupancy grid maps. See \"Grid\" group for parameters.");
     RTABMAP_PARAM(RGBD, MarkerDetection,              bool, false,  "Detect static markers to be added as landmarks for graph optimization. If input data have already landmarks, this will be ignored. See \"Marker\" group for parameters.");
@@ -378,12 +379,13 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(RGBD, ProximityByTime,              bool, false, "Detection over all locations in STM.");
     RTABMAP_PARAM(RGBD, ProximityBySpace,             bool, true,  "Detection over locations (in Working Memory) near in space.");
     RTABMAP_PARAM(RGBD, ProximityMaxGraphDepth,       int, 50,     "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
-    RTABMAP_PARAM(RGBD, ProximityMaxPaths,            int, 3,      "Maximum paths compared (from the most recent) for proximity detection by space. 0 means no limit.");
-    RTABMAP_PARAM(RGBD, ProximityPathFilteringRadius, float, 1,    "Path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection.");
-    RTABMAP_PARAM(RGBD, ProximityPathMaxNeighbors,    int, 0,      "Maximum neighbor nodes compared on each path. Set to 0 to disable merging the laser scans.");
-    RTABMAP_PARAM(RGBD, ProximityPathRawPosesUsed,    bool, true,  "When comparing to a local path, merge the scan using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.");
-    RTABMAP_PARAM(RGBD, ProximityAngle,               float, 45,   "Maximum angle (degrees) for visual proximity detection.");
-    RTABMAP_PARAM(RGBD, ProximityOdomGuess,           bool, false, "Use odometry as motion guess for visual proximity detection.");
+    RTABMAP_PARAM(RGBD, ProximityMaxPaths,            int, 3,      "Maximum paths compared (from the most recent) for proximity detection. 0 means no limit.");
+    RTABMAP_PARAM(RGBD, ProximityPathFilteringRadius, float, 1,    "Path filtering radius to reduce the number of nodes to compare in a path in one-to-many proximity detection. The nearest node in a path should be inside that radius to be considered for one-to-one proximity detection.");
+    RTABMAP_PARAM(RGBD, ProximityPathMaxNeighbors,    int, 0,      "Maximum neighbor nodes compared on each path for one-to-many proximity detection. Set to 0 to disable one-to-many proximity detection (by merging the laser scans).");
+    RTABMAP_PARAM(RGBD, ProximityPathRawPosesUsed,    bool, true,  "When comparing to a local path for one-to-many proximity detection, merge the scans using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.");
+    RTABMAP_PARAM(RGBD, ProximityAngle,               float, 45,   "Maximum angle (degrees) for one-to-one proximity detection.");
+    RTABMAP_PARAM(RGBD, ProximityOdomGuess,           bool, false, "Use odometry as motion guess for one-to-one proximity detection.");
+    RTABMAP_PARAM(RGBD, ProximityGlobalScanMap,       bool, false, uFormat("Create a global assembled map from laser scans for one-to-many proximity detection, replacing the original one-to-many proximity detection (i.e., detection against local paths). Only used in localization mode (%s=false), otherwise original one-to-many proximity detection is done. Note also that if graph is modified (i.e., memory management is enabled or robot jumps from one disjoint session to another in same database), the global scan map is cleared and one-to-many proximity detection is reverted to original approach.", kMemIncrementalMemory().c_str(), kRGBDProximityPathRawPosesUsed().c_str()));
 
     // Graph optimization
 #ifdef RTABMAP_GTSAM
@@ -417,7 +419,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Optimizer, GravitySigma,    float, 0.0,      uFormat("Gravity sigma value (>=0, typically between 0.1 and 0.3). Optimization is done while preserving gravity orientation of the poses. This should be used only with visual/lidar inertial odometry approaches, for which we assume that all odometry poses are aligned with gravity. Set to 0 to disable gravity constraints. Currently supported only with g2o and GTSAM optimization strategies (see %s).", kOptimizerStrategy().c_str()));
 #endif
 
-#ifdef RTABMAP_ORB_SLAM2
+#ifdef RTABMAP_ORB_SLAM
     RTABMAP_PARAM(g2o, Solver,            int, 3,          "0=csparse 1=pcg 2=cholmod 3=Eigen");
 #else
     RTABMAP_PARAM(g2o, Solver,            int, 0,          "0=csparse 1=pcg 2=cholmod 3=Eigen");
@@ -448,7 +450,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.3,   "[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
     RTABMAP_PARAM(Odom, VisKeyFrameThr,         int, 150,     "[Visual] Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
     RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.9,   "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
-    RTABMAP_PARAM(Odom, ImageDecimation,        int, 1,       "Decimation of the images before registration. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
+    RTABMAP_PARAM(Odom, ImageDecimation,     unsigned int, 1, uFormat("Decimation of the RGB image before registration. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. If %s is true and if depth is smaller than decimated RGB, depth may be interpolated to match RGB size for feature detection.", kVisDepthAsMask().c_str()));
     RTABMAP_PARAM(Odom, AlignWithGround,        bool, false,  "Align odometry with the ground on initialization.");
 
     // Odometry Frame-to-Map
@@ -459,7 +461,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomF2M, ScanSubtractAngle,   float, 45,    uFormat("[Geometry] Max angle (degrees) used to filter points of a new added scan to local map (when \"%s\">0). 0 means any angle.", kOdomF2MScanSubtractRadius().c_str()).c_str());
     RTABMAP_PARAM(OdomF2M, ScanRange,           float, 0,     "[Geometry] Distance Range used to filter points of local map (when > 0). 0 means local map is updated using time and not range.");
     RTABMAP_PARAM(OdomF2M, ValidDepthRatio,     float, 0.75,  "If a new frame has points without valid depth, they are added to local feature map only if points with valid depth on total points is over this ratio. Setting to 1 means no points without valid depth are added to local feature map.");
-#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
     RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 1, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #else
     RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
@@ -520,12 +522,12 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomViso2, BucketHeight,              double, 50,  "Height of bucket.");
 
     // Odometry ORB_SLAM2
-    RTABMAP_PARAM_STR(OdomORBSLAM2, VocPath,             "",    "Path to ORB vocabulary (*.txt).");
-    RTABMAP_PARAM(OdomORBSLAM2, Bf,              double, 0.076, "Fake IR projector baseline (m) used only when stereo is not used.");
-    RTABMAP_PARAM(OdomORBSLAM2, ThDepth,         double, 40.0,  "Close/Far threshold. Baseline times.");
-    RTABMAP_PARAM(OdomORBSLAM2, Fps,             float,  0.0,   "Camera FPS.");
-    RTABMAP_PARAM(OdomORBSLAM2, MaxFeatures,     int,    1000,  "Maximum ORB features extracted per frame.");
-    RTABMAP_PARAM(OdomORBSLAM2, MapSize,         int,    3000,  "Maximum size of the feature map (0 means infinite).");
+    RTABMAP_PARAM_STR(OdomORBSLAM, VocPath,             "",    "Path to ORB vocabulary (*.txt).");
+    RTABMAP_PARAM(OdomORBSLAM, Bf,              double, 0.076, "Fake IR projector baseline (m) used only when stereo is not used.");
+    RTABMAP_PARAM(OdomORBSLAM, ThDepth,         double, 40.0,  "Close/Far threshold. Baseline times.");
+    RTABMAP_PARAM(OdomORBSLAM, Fps,             float,  0.0,   "Camera FPS.");
+    RTABMAP_PARAM(OdomORBSLAM, MaxFeatures,     int,    1000,  "Maximum ORB features extracted per frame.");
+    RTABMAP_PARAM(OdomORBSLAM, MapSize,         int,    3000,  "Maximum size of the feature map (0 means infinite).");
 
     // Odometry OKVIS
     RTABMAP_PARAM_STR(OdomOKVIS, ConfigPath,     "",  "Path of OKVIS config file.");
@@ -581,7 +583,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, RefineIterations,         int, 5,        uFormat("[%s = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, PnPReprojError,           float, 2,      uFormat("[%s = 1] PnP reprojection error.", kVisEstimationType().c_str()));
     RTABMAP_PARAM(Vis, PnPFlags,                 int, 0,        uFormat("[%s = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P", kVisEstimationType().c_str()));
-#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
     RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 0,        uFormat("[%s = 1] Refine iterations. Set to 0 if \"%s\" is also used.", kVisEstimationType().c_str(), kVisBundleAdjustment().c_str()));
 #else
     RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 1,        uFormat("[%s = 1] Refine iterations. Set to 0 if \"%s\" is also used.", kVisEstimationType().c_str(), kVisBundleAdjustment().c_str()));
@@ -618,7 +620,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, CorFlowIterations,        int, 30,     uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowEps,               float, 0.01, uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowMaxLevel,          int, 3,      uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
-#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM)
     RTABMAP_PARAM(Vis, BundleAdjustment,         int, 1,      "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
 #else
     RTABMAP_PARAM(Vis, BundleAdjustment,         int, 0,      "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba, 3=Ceres.");
@@ -636,9 +638,14 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(GMS, ThresholdFactor,      double, 6.0,   "The higher, the less matches.");
 
     // ICP registration parameters
+#ifdef RTABMAP_POINTMATCHER
+    RTABMAP_PARAM(Icp, Strategy,                  int, 1,       "ICP implementation: 0=Point Cloud Library, 1=libpointmatcher, 2=CCCoreLib (CloudCompare).");
+#else
+    RTABMAP_PARAM(Icp, Strategy,                  int, 0,       "ICP implementation: 0=Point Cloud Library, 1=libpointmatcher, 2=CCCoreLib (CloudCompare).");
+#endif
     RTABMAP_PARAM(Icp, MaxTranslation,            float, 0.2,   "Maximum ICP translation correction accepted (m).");
     RTABMAP_PARAM(Icp, MaxRotation,               float, 0.78,  "Maximum ICP rotation correction accepted (rad).");
-    RTABMAP_PARAM(Icp, VoxelSize,                 float, 0.0,   "Uniform sampling voxel size (0=disabled).");
+    RTABMAP_PARAM(Icp, VoxelSize,                 float, 0.05,  "Uniform sampling voxel size (0=disabled).");
     RTABMAP_PARAM(Icp, DownsamplingStep,          int, 1,       "Downsampling step size (1=no sampling). This is done before uniform sampling.");
     RTABMAP_PARAM(Icp, RangeMin,                  float, 0,     "Minimum range filtering (0=disabled).");
     RTABMAP_PARAM(Icp, RangeMax,                  float, 0,     "Maximum range filtering (0=disabled).");
@@ -650,6 +657,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, Iterations,                int, 30,      "Max iterations.");
     RTABMAP_PARAM(Icp, Epsilon,                   float, 0,     "Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.");
     RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.1,   "Ratio of matching correspondences to accept the transform.");
+    RTABMAP_PARAM(Icp, Force4DoF,                 bool, false,   uFormat("Limit ICP to x, y, z and yaw DoF. Available if %s > 0.", kIcpStrategy().c_str()));
 #ifdef RTABMAP_POINTMATCHER
     RTABMAP_PARAM(Icp, PointToPlane,                bool, true,   "Use point to plane ICP.");
 #else
@@ -660,18 +668,18 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, PointToPlaneGroundNormalsUp, float, 0.0,   "Invert normals on ground if they are pointing down (useful for ring-like 3D LiDARs). 0 means disabled, 1 means only normals perfectly aligned with -z axis. This is only done with 3D scans.");
     RTABMAP_PARAM(Icp, PointToPlaneMinComplexity,   float, 0.02,  uFormat("Minimum structural complexity (0.0=low, 1.0=high) of the scan to do PointToPlane registration, otherwise PointToPoint registration is done instead and strategy from %s is used. This check is done only when %s=true.", kIcpPointToPlaneLowComplexityStrategy().c_str(), kIcpPointToPlane().c_str()));
     RTABMAP_PARAM(Icp, PointToPlaneLowComplexityStrategy, int, 1, uFormat("If structural complexity is below %s: set to 0 to so that the transform is automatically rejected, set to 1 to limit ICP correction in axes with most constraints (e.g., for a corridor-like environment, the resulting transform will be limited in y and yaw, x will taken from the guess), set to 2 to accept \"as is\" the transform computed by PointToPoint.", kIcpPointToPlaneMinComplexity().c_str()));
+    RTABMAP_PARAM(Icp, OutlierRatio,                float, 0.85,   uFormat("Outlier ratio used with %s>0. For libpointmatcher, this parameter set TrimmedDistOutlierFilter/ratio for convenience when configuration file is not set. For CCCoreLib, this parameter set the \"finalOverlapRatio\". The value should be between 0 and 1.", kIcpStrategy().c_str()));
+    RTABMAP_PARAM_STR(Icp, DebugExportFormat,       "",           "Export scans used for ICP in the specified format (a warning on terminal will be shown with the file paths used). Supported formats are \"pcd\", \"ply\" or \"vtk\". If logger level is debug, from and to scans will stamped, so previous files won't be overwritten.");
 
     // libpointmatcher
-#ifdef RTABMAP_POINTMATCHER
-    RTABMAP_PARAM(Icp, PM,                       bool, true,    "Use libpointmatcher for ICP registration instead of PCL's implementation.");
-#else
-    RTABMAP_PARAM(Icp, PM,                       bool, false,   "Use libpointmatcher for ICP registration instead of PCL's implementation.");
-#endif
     RTABMAP_PARAM_STR(Icp, PMConfig,             "",            uFormat("Configuration file (*.yaml) used by libpointmatcher. Note that data filters set for libpointmatcher are done after filtering done by rtabmap (i.e., %s, %s), so make sure to disable those in rtabmap if you want to use only those from libpointmatcher. Parameters %s, %s and %s are also ignored if configuration file is set.", kIcpVoxelSize().c_str(), kIcpDownsamplingStep().c_str(), kIcpIterations().c_str(), kIcpEpsilon().c_str(), kIcpMaxCorrespondenceDistance().c_str()).c_str());
     RTABMAP_PARAM(Icp, PMMatcherKnn,             int, 1,        "KDTreeMatcher/knn: number of nearest neighbors to consider it the reference. For convenience when configuration file is not set.");
     RTABMAP_PARAM(Icp, PMMatcherEpsilon,         float, 0.0,    "KDTreeMatcher/epsilon: approximation to use for the nearest-neighbor search. For convenience when configuration file is not set.");
     RTABMAP_PARAM(Icp, PMMatcherIntensity,       bool, false,   uFormat("KDTreeMatcher:  among nearest neighbors, keep only the one with the most similar intensity. This only work with %s>1.", kIcpPMMatcherKnn().c_str()));
-    RTABMAP_PARAM(Icp, PMOutlierRatio,           float, 0.85,   "TrimmedDistOutlierFilter/ratio: For convenience when configuration file is not set. For kinect-like point cloud, use 0.65.");
+
+    RTABMAP_PARAM(Icp, CCSamplingLimit,          unsigned int, 50000, "Maximum number of points per cloud (they are randomly resampled below this limit otherwise).");
+    RTABMAP_PARAM(Icp, CCFilterOutFarthestPoints, bool, false, "If true, the algorithm will automatically ignore farthest points from the reference, for better convergence.");
+    RTABMAP_PARAM(Icp, CCMaxFinalRMS,            float, 0.2,   "Maximum final RMS error.");
 
     // Stereo disparity
     RTABMAP_PARAM(Stereo, WinWidth,              int, 15,       "Window width.");
@@ -715,7 +723,7 @@ class RTABMAP_EXP Parameters
 
     // Occupancy Grid
     RTABMAP_PARAM(Grid, FromDepth,               bool,   true,    "Create occupancy grid from depth image(s), otherwise it is created from laser scan.");
-    RTABMAP_PARAM(Grid, DepthDecimation,         int,    4,       uFormat("[%s=true] Decimation of the depth image before creating cloud. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).", kGridDepthDecimation().c_str()));
+    RTABMAP_PARAM(Grid, DepthDecimation,         unsigned int,  4, uFormat("[%s=true] Decimation of the depth image before creating cloud.", kGridDepthDecimation().c_str()));
     RTABMAP_PARAM(Grid, RangeMin,                float,  0.0,     "Minimum range from sensor.");
     RTABMAP_PARAM(Grid, RangeMax,                float,  5.0,     "Maximum range from sensor. 0=inf.");
     RTABMAP_PARAM_STR(Grid, DepthRoiRatios,      "0.0 0.0 0.0 0.0", uFormat("[%s=true] Region of interest ratios [left, right, top, bottom].", kGridFromDepth().c_str()));
@@ -758,6 +766,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(GridGlobal, ProbMiss,             float,  0.4,     "Probability of a miss (value between 0 and 0.5).");
     RTABMAP_PARAM(GridGlobal, ProbClampingMin,      float,  0.1192,  "Probability clamping minimum (value between 0 and 1).");
     RTABMAP_PARAM(GridGlobal, ProbClampingMax,      float,  0.971,   "Probability clamping maximum (value between 0 and 1).");
+    RTABMAP_PARAM(GridGlobal, FloodFillDepth,       unsigned int, 0, "Flood fill filter (0=disabled), used to remove empty cells outside the map. The flood fill is done at the specified depth (between 1 and 16) of the OctoMap.");
 
     RTABMAP_PARAM(Marker, Dictionary,             int,   0,     "Dictionary to use: DICT_ARUCO_4X4_50=0, DICT_ARUCO_4X4_100=1, DICT_ARUCO_4X4_250=2, DICT_ARUCO_4X4_1000=3, DICT_ARUCO_5X5_50=4, DICT_ARUCO_5X5_100=5, DICT_ARUCO_5X5_250=6, DICT_ARUCO_5X5_1000=7, DICT_ARUCO_6X6_50=8, DICT_ARUCO_6X6_100=9, DICT_ARUCO_6X6_250=10, DICT_ARUCO_6X6_1000=11, DICT_ARUCO_7X7_50=12, DICT_ARUCO_7X7_100=13, DICT_ARUCO_7X7_250=14, DICT_ARUCO_7X7_1000=15, DICT_ARUCO_ORIGINAL = 16, DICT_APRILTAG_16h5=17, DICT_APRILTAG_25h9=18, DICT_APRILTAG_36h10=19, DICT_APRILTAG_36h11=20");
     RTABMAP_PARAM(Marker, Length,                 float, 0,     "The length (m) of the markers' side. 0 means automatic marker length estimation using the depth image (the camera should look at the marker perpendicularly for initialization).");

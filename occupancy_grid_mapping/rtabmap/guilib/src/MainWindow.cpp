@@ -363,6 +363,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionRaw_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRaw()));
 	connect(_ui->actionRGBD_SLAM_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAM()));
 	connect(_ui->actionRGBD_SLAM_motion_capture_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAMMotionCapture()));
+	connect(_ui->actionRGBD_SLAM_ID_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRGBDSLAMID()));
 	connect(_ui->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
 	connect(_ui->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
 	connect(_ui->actionG2o_g2o, SIGNAL(triggered()), this , SLOT(exportPosesG2O()));
@@ -440,10 +441,12 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionStereoDC1394, SIGNAL(triggered()), this, SLOT(selectStereoDC1394()));
 	connect(_ui->actionStereoFlyCapture2, SIGNAL(triggered()), this, SLOT(selectStereoFlyCapture2()));
 	connect(_ui->actionStereoZed, SIGNAL(triggered()), this, SLOT(selectStereoZed()));
+	connect(_ui->actionZed_Open_Capture, SIGNAL(triggered()), this, SLOT(selectStereoZedOC()));
     connect(_ui->actionStereoTara, SIGNAL(triggered()), this, SLOT(selectStereoTara()));
 	connect(_ui->actionStereoUsb, SIGNAL(triggered()), this, SLOT(selectStereoUsb()));
 	connect(_ui->actionRealSense2_T265, SIGNAL(triggered()), this, SLOT(selectRealSense2Stereo()));
 	connect(_ui->actionMYNT_EYE_S_SDK, SIGNAL(triggered()), this, SLOT(selectMyntEyeS()));
+	connect(_ui->actionDepthAI, SIGNAL(triggered()), this, SLOT(selectDepthAI()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_CV->setEnabled(CameraOpenNICV::available());
 	_ui->actionOpenNI_CV_ASUS->setEnabled(CameraOpenNICV::available());
@@ -462,8 +465,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->actionStereoDC1394->setEnabled(CameraStereoDC1394::available());
 	_ui->actionStereoFlyCapture2->setEnabled(CameraStereoFlyCapture2::available());
 	_ui->actionStereoZed->setEnabled(CameraStereoZed::available());
+	_ui->actionZed_Open_Capture->setEnabled(CameraStereoZedOC::available());
     _ui->actionStereoTara->setEnabled(CameraStereoTara::available());
     _ui->actionMYNT_EYE_S_SDK->setEnabled(CameraMyntEye::available());
+    _ui->actionDepthAI->setEnabled(CameraDepthAI::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionPreferences, SIGNAL(triggered()), this, SLOT(openPreferences()));
@@ -599,6 +604,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", false);
 	_ui->statsToolBox->updateStat("Odometry/ICPStructuralDistribution/", false);
 	_ui->statsToolBox->updateStat("Odometry/ICPCorrespondences/", false);
+	_ui->statsToolBox->updateStat("Odometry/ICPRMS/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", false);
 	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", false);
@@ -693,6 +699,11 @@ void MainWindow::setupMainLayout(bool vertical)
 	{
 		qobject_cast<QHBoxLayout *>(_ui->layout_imageview->layout())->setDirection(QBoxLayout::LeftToRight);
 	}
+}
+
+std::map<int, Transform> MainWindow::currentVisiblePosesMap() const
+{
+	return _ui->widget_mapVisibility->getVisiblePoses();
 }
 
 void MainWindow::setCloudViewer(rtabmap::CloudViewer * cloudViewer)
@@ -897,7 +908,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		else
 		{
 			Q_EMIT cameraInfoReceived(cameraEvent->info());
-			if (_odomThread == 0 && _camera->camera()->odomProvided() && _preferencesDialog->isRGBDMode())
+			if (_odomThread == 0 && (_camera->odomProvided()) && _preferencesDialog->isRGBDMode())
 			{
 				OdometryInfo odomInfo;
 				odomInfo.reg.covariance = cameraEvent->info().odomCovariance;
@@ -960,15 +971,18 @@ void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 	{
 		_firstStamp = info.stamp;
 	}
-	_ui->statsToolBox->updateStat("Camera/Time total/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeTotal*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeCapture*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Camera/Time undistort depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeUndistortDepth*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Camera/Time bilateral filtering/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeBilateralFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeImageDecimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeDisparity*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeMirroring*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Camera/Time exposure compensation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeStereoExposureCompensation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeScanFromDepth*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+	if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
+	{
+		_ui->statsToolBox->updateStat("Camera/Time total/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeTotal*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time capturing/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeCapture*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time undistort depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeUndistortDepth*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time bilateral filtering/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeBilateralFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time decimation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeImageDecimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time disparity/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeDisparity*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeMirroring*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time exposure compensation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeStereoExposureCompensation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeScanFromDepth*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+	}
 
 	Q_EMIT(cameraInfoProcessed());
 }
@@ -1034,6 +1048,94 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_lastOdomPose = pose;
 	}
 
+	const SensorData * data = &odom.data();
+
+	SensorData rectifiedData;
+	if(!data->imageRaw().empty() &&
+		((_ui->dockWidget_cloudViewer->isVisible() &&  _preferencesDialog->isCloudsShown(1)) ||
+		  (_ui->dockWidget_odometry->isVisible() && (_ui->imageView_odometry->isImageShown() || _ui->imageView_odometry->isImageDepthShown()))))
+	{
+		// Do we need to rectify images?
+		ParametersMap allParameters = _preferencesDialog->getAllParameters();
+		bool imagesAlreadyRectified = Parameters::defaultRtabmapImagesAlreadyRectified();
+		Parameters::parse(allParameters, Parameters::kRtabmapImagesAlreadyRectified(), imagesAlreadyRectified);
+		if(!imagesAlreadyRectified)
+		{
+			rectifiedData = odom.data();
+			if(data->cameraModels().size())
+			{
+				// Note that only RGB image is rectified, the depth image is assumed to be already registered to rectified RGB camera.
+				UASSERT(int((data->imageRaw().cols/data->cameraModels().size())*data->cameraModels().size()) == data->imageRaw().cols);
+				int subImageWidth = data->imageRaw().cols/data->cameraModels().size();
+				cv::Mat rectifiedImages = data->imageRaw().clone();
+				bool initRectMaps = _rectCameraModelsOdom.empty() || _rectCameraModelsOdom.size()!=data->cameraModels().size();
+				if(initRectMaps)
+				{
+					_rectCameraModelsOdom.resize(data->cameraModels().size());
+				}
+				for(unsigned int i=0; i<data->cameraModels().size(); ++i)
+				{
+					if(data->cameraModels()[i].isValidForRectification())
+					{
+						if(initRectMaps)
+						{
+							_rectCameraModelsOdom[i] = data->cameraModels()[i];
+							if(!_rectCameraModelsOdom[i].isRectificationMapInitialized())
+							{
+								UWARN("Initializing rectification maps for camera %d (only done for the first image received)...", i);
+								_rectCameraModelsOdom[i].initRectificationMap();
+								UWARN("Initializing rectification maps for camera %d (only done for the first image received)... done!", i);
+							}
+						}
+						UASSERT(_rectCameraModelsOdom[i].imageWidth() == data->cameraModels()[i].imageWidth() &&
+								_rectCameraModelsOdom[i].imageHeight() == data->cameraModels()[i].imageHeight());
+						cv::Mat rectifiedImage = _rectCameraModelsOdom[i].rectifyImage(cv::Mat(data->imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data->imageRaw().rows)));
+						rectifiedImage.copyTo(cv::Mat(rectifiedImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data->imageRaw().rows)));
+					}
+					else
+					{
+						UWARN("Camera %d of data %d is not valid for rectification (%dx%d).",
+								i, data->id(),
+								data->cameraModels()[i].imageWidth(),
+								data->cameraModels()[i].imageHeight());
+					}
+				}
+				rectifiedData.setRGBDImage(rectifiedImages, data->depthOrRightRaw(), data->cameraModels());
+			}
+			else if(!data->rightRaw().empty())
+			{
+				if(data->stereoCameraModel().isValidForRectification())
+				{
+					bool initRectMaps = _rectCameraModelsOdom.size()!=2;
+					if(initRectMaps)
+					{
+						_rectCameraModelsOdom.resize(2);
+						_rectCameraModelsOdom[0] = data->stereoCameraModel().left();
+						_rectCameraModelsOdom[1] = data->stereoCameraModel().right();
+						if(!_rectCameraModelsOdom[0].isRectificationMapInitialized())
+						{
+							UWARN("Initializing rectification maps for stereo camera (only done for the first image received)...");
+							_rectCameraModelsOdom[0].initRectificationMap();
+							_rectCameraModelsOdom[1].initRectificationMap();
+							UWARN("Initializing rectification maps for stereo camera (only done for the first image received)... done!");
+						}
+					}
+					UASSERT(_rectCameraModelsOdom[0].imageWidth() == data->stereoCameraModel().left().imageWidth() &&
+							_rectCameraModelsOdom[1].imageHeight() == data->stereoCameraModel().right().imageHeight());
+					cv::Mat rectifiedLeft = _rectCameraModelsOdom[0].rectifyImage(data->imageRaw());
+					cv::Mat rectifiedRight = _rectCameraModelsOdom[1].rectifyImage(data->rightRaw());
+					rectifiedData.setStereoImage(rectifiedLeft, rectifiedRight, data->stereoCameraModel());
+				}
+				else
+				{
+					UWARN("Stereo camera model of data %d is not valid for rectification.", data->id());
+				}
+			}
+			UDEBUG("Time rectification: %fs", time.ticks());
+			data = &rectifiedData;
+		}
+	}
+
 	if(_ui->dockWidget_cloudViewer->isVisible())
 	{
 		bool cloudUpdated = false;
@@ -1044,15 +1146,15 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		if(!pose.isNull())
 		{
 			// 3d cloud
-			if(odom.data().depthOrRightRaw().cols == odom.data().imageRaw().cols &&
-			   odom.data().depthOrRightRaw().rows == odom.data().imageRaw().rows &&
-			   !odom.data().depthOrRightRaw().empty() &&
-			   (odom.data().cameraModels().size() || odom.data().stereoCameraModel().isValidForProjection()) &&
+			if(!data->imageRaw().empty() &&
+			   !data->depthOrRightRaw().empty() &&
+			   (data->cameraModels().size() || data->stereoCameraModel().isValidForProjection()) &&
 			   _preferencesDialog->isCloudsShown(1))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				pcl::IndicesPtr indices(new std::vector<int>);
-				cloud = util3d::cloudRGBFromSensorData(odom.data(),
+
+				cloud = util3d::cloudRGBFromSensorData(*data,
 						_preferencesDialog->getCloudDecimation(1),
 						_preferencesDialog->getCloudMaxDepth(1),
 						_preferencesDialog->getCloudMinDepth(1),
@@ -1071,17 +1173,17 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 						// Fast organized mesh
 						Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
-						if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
+						if(data->cameraModels().size() && !data->cameraModels()[0].localTransform().isNull())
 						{
-							viewpoint[0] = odom.data().cameraModels()[0].localTransform().x();
-							viewpoint[1] = odom.data().cameraModels()[0].localTransform().y();
-							viewpoint[2] = odom.data().cameraModels()[0].localTransform().z();
+							viewpoint[0] = data->cameraModels()[0].localTransform().x();
+							viewpoint[1] = data->cameraModels()[0].localTransform().y();
+							viewpoint[2] = data->cameraModels()[0].localTransform().z();
 						}
-						else if(!odom.data().stereoCameraModel().localTransform().isNull())
+						else if(!data->stereoCameraModel().localTransform().isNull())
 						{
-							viewpoint[0] = odom.data().stereoCameraModel().localTransform().x();
-							viewpoint[1] = odom.data().stereoCameraModel().localTransform().y();
-							viewpoint[2] = odom.data().stereoCameraModel().localTransform().z();
+							viewpoint[0] = data->stereoCameraModel().localTransform().x();
+							viewpoint[1] = data->stereoCameraModel().localTransform().y();
+							viewpoint[2] = data->stereoCameraModel().localTransform().z();
 						}
 						std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
 								output,
@@ -1091,7 +1193,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 								Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
 						if(polygons.size())
 						{
-							if(_preferencesDialog->isCloudMeshingTexture() && !odom.data().imageRaw().empty())
+							if(_preferencesDialog->isCloudMeshingTexture() && !data->imageRaw().empty())
 							{
 								pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
 								pcl::toPCLPointCloud2(*cloud, textureMesh->cloud);
@@ -1119,7 +1221,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 								mesh_material.tex_file = "";
 								textureMesh->tex_materials.push_back(mesh_material);
 
-								if(!_cloudViewer->addCloudTextureMesh("cloudOdom", textureMesh, odom.data().imageRaw(), _odometryCorrection))
+								if(!_cloudViewer->addCloudTextureMesh("cloudOdom", textureMesh, data->imageRaw(), _odometryCorrection))
 								{
 									UERROR("Adding cloudOdom to viewer failed!");
 								}
@@ -1196,9 +1298,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					scanUpdated = true;
 				}
 				// scan cloud
-				if(!odom.data().laserScanRaw().isEmpty())
+				if(!data->laserScanRaw().isEmpty())
 				{
-					LaserScan scan = odom.data().laserScanRaw();
+					LaserScan scan = data->laserScanRaw();
 
 					if(_preferencesDialog->getDownsamplingStepScan(1) > 1 ||
 						_preferencesDialog->getScanMaxRange(1) > 0.0f ||
@@ -1340,33 +1442,32 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						}
 					}
 				}
-
-				if(  _preferencesDialog->isIMUGravityShown(1) &&
-					(odom.data().imu().orientation().val[0]!=0 ||
-					odom.data().imu().orientation().val[1]!=0 ||
-					odom.data().imu().orientation().val[2]!=0 ||
-					odom.data().imu().orientation().val[3]!=0))
-				{
-					Eigen::Vector3f gravity(0,0,-_preferencesDialog->getIMUGravityLength(1));
-					Transform orientation(0,0,0, odom.data().imu().orientation()[0], odom.data().imu().orientation()[1], odom.data().imu().orientation()[2], odom.data().imu().orientation()[3]);
-					gravity = (orientation* odom.data().imu().localTransform().inverse()*(_odometryCorrection*pose).rotation().inverse()).toEigen3f()*gravity;
-					_cloudViewer->addOrUpdateLine("odom_imu_orientation", _odometryCorrection*pose, (_odometryCorrection*pose).translation()*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0)*pose.rotation().inverse(), Qt::yellow, true, true);
-					filteredGravityUpdated = true;
-				}
-				if( _preferencesDialog->isIMUAccShown() &&
-					(odom.data().imu().linearAcceleration().val[0]!=0 ||
-					odom.data().imu().linearAcceleration().val[1]!=0 ||
-					odom.data().imu().linearAcceleration().val[2]!=0))
-				{
-					Eigen::Vector3f gravity(
-							-odom.data().imu().linearAcceleration().val[0],
-							-odom.data().imu().linearAcceleration().val[1],
-							-odom.data().imu().linearAcceleration().val[2]);
-					gravity = gravity.normalized() * _preferencesDialog->getIMUGravityLength(1);
-					gravity = odom.data().imu().localTransform().toEigen3f()*gravity;
-					_cloudViewer->addOrUpdateLine("odom_imu_acc", _odometryCorrection*pose, _odometryCorrection*pose*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0), Qt::red, true, true);
-					accelerationUpdated = true;
-				}
+			}
+			if(  _preferencesDialog->isIMUGravityShown(1) &&
+				(data->imu().orientation().val[0]!=0 ||
+				data->imu().orientation().val[1]!=0 ||
+				data->imu().orientation().val[2]!=0 ||
+				data->imu().orientation().val[3]!=0))
+			{
+				Eigen::Vector3f gravity(0,0,-_preferencesDialog->getIMUGravityLength(1));
+				Transform orientation(0,0,0, data->imu().orientation()[0], data->imu().orientation()[1], data->imu().orientation()[2], data->imu().orientation()[3]);
+				gravity = (orientation* data->imu().localTransform().inverse()*(_odometryCorrection*pose).rotation().inverse()).toEigen3f()*gravity;
+				_cloudViewer->addOrUpdateLine("odom_imu_orientation", _odometryCorrection*pose, (_odometryCorrection*pose).translation()*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0)*pose.rotation().inverse(), Qt::yellow, true, true);
+				filteredGravityUpdated = true;
+			}
+			if( _preferencesDialog->isIMUAccShown() &&
+				(data->imu().linearAcceleration().val[0]!=0 ||
+				data->imu().linearAcceleration().val[1]!=0 ||
+				data->imu().linearAcceleration().val[2]!=0))
+			{
+				Eigen::Vector3f gravity(
+						-data->imu().linearAcceleration().val[0],
+						-data->imu().linearAcceleration().val[1],
+						-data->imu().linearAcceleration().val[2]);
+				gravity = gravity.normalized() * _preferencesDialog->getIMUGravityLength(1);
+				gravity = data->imu().localTransform().toEigen3f()*gravity;
+				_cloudViewer->addOrUpdateLine("odom_imu_acc", _odometryCorrection*pose, _odometryCorrection*pose*Transform(gravity[0], gravity[1], gravity[2], 0, 0, 0), Qt::red, true, true);
+				accelerationUpdated = true;
 			}
 		}
 		if(!dataIgnored)
@@ -1396,31 +1497,32 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				_cloudViewer->removeLine("odom_imu_acc");
 			}
 		}
+		UDEBUG("Time 3D Rendering: %fs", time.ticks());
 	}
 
 	if(!odom.pose().isNull())
 	{
 		_odometryReceived = true;
 		// update camera position
-		if(odom.data().cameraModels().size() && odom.data().cameraModels()[0].isValidForProjection())
+		if(data->cameraModels().size() && data->cameraModels()[0].isValidForProjection())
 		{
-			_cloudViewer->updateCameraFrustums(_odometryCorrection*odom.pose(), odom.data().cameraModels());
+			_cloudViewer->updateCameraFrustums(_odometryCorrection*odom.pose(), data->cameraModels());
 		}
-		else if(odom.data().stereoCameraModel().isValidForProjection())
+		else if(data->stereoCameraModel().isValidForProjection())
 		{
-			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), odom.data().stereoCameraModel());
+			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), data->stereoCameraModel());
 		}
-		else if(!odom.data().laserScanRaw().isEmpty() ||
-				!odom.data().laserScanCompressed().isEmpty())
+		else if(!data->laserScanRaw().isEmpty() ||
+				!data->laserScanCompressed().isEmpty())
 		{
 			Transform scanLocalTransform;
-			if(!odom.data().laserScanRaw().isEmpty())
+			if(!data->laserScanRaw().isEmpty())
 			{
-				scanLocalTransform = odom.data().laserScanRaw().localTransform();
+				scanLocalTransform = data->laserScanRaw().localTransform();
 			}
 			else
 			{
-				scanLocalTransform = odom.data().laserScanCompressed().localTransform();
+				scanLocalTransform = data->laserScanCompressed().localTransform();
 			}
 			//fake frustum
 			CameraModel model(
@@ -1445,8 +1547,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		}
 #endif
 		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
+		UDEBUG("Time Update Pose: %fs", time.ticks());
 	}
-	_cloudViewer->update();
+	_cloudViewer->refreshView();
 
 	if(_ui->graphicsView_graphView->isVisible())
 	{
@@ -1454,15 +1557,16 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		{
 			_ui->graphicsView_graphView->updateReferentialPosition(_odometryCorrection*odom.pose());
 			_ui->graphicsView_graphView->update();
+			UDEBUG("Time Update graphview: %fs", time.ticks());
 		}
 	}
 
 	if(_ui->dockWidget_odometry->isVisible() &&
-	   !odom.data().imageRaw().empty())
+	   !data->imageRaw().empty())
 	{
 		if(_ui->imageView_odometry->isFeaturesShown())
 		{
-			if(odom.info().type == (int)Odometry::kTypeF2M || odom.info().type == (int)Odometry::kTypeORBSLAM2)
+			if(odom.info().type == (int)Odometry::kTypeF2M || odom.info().type == (int)Odometry::kTypeORBSLAM)
 			{
 				if(_preferencesDialog->isOdomOnlyInliersShown())
 				{
@@ -1473,14 +1577,14 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					}
 					_ui->imageView_odometry->setFeatures(
 							kpInliers,
-							odom.data().depthRaw(),
+							data->depthRaw(),
 							Qt::green);
 				}
 				else
 				{
 					_ui->imageView_odometry->setFeatures(
 							odom.info().words,
-							odom.data().depthRaw(),
+							data->depthRaw(),
 							Qt::yellow);
 				}
 			}
@@ -1488,13 +1592,14 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					odom.info().type == (int)Odometry::kTypeViso2 ||
 					odom.info().type == (int)Odometry::kTypeFovis ||
 					odom.info().type == (int)Odometry::kTypeMSCKF ||
-					odom.info().type == (int)Odometry::kTypeVINS)
+					odom.info().type == (int)Odometry::kTypeVINS ||
+					odom.info().type == (int)Odometry::kTypeOpenVINS)
 			{
 				std::vector<cv::KeyPoint> kpts;
 				cv::KeyPoint::convert(odom.info().newCorners, kpts, 7);
 				_ui->imageView_odometry->setFeatures(
 						kpts,
-						odom.data().depthRaw(),
+						data->depthRaw(),
 						Qt::red);
 			}
 		}
@@ -1515,7 +1620,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				_odomImageShow = _ui->imageView_odometry->isImageShown();
 				_odomImageDepthShow = _ui->imageView_odometry->isImageDepthShown();
 			}
-			_ui->imageView_odometry->setImageDepth(odom.data().imageRaw());
+			_ui->imageView_odometry->setImageDepth(data->imageRaw());
 			_ui->imageView_odometry->setImageShown(true);
 			_ui->imageView_odometry->setImageDepthShown(true);
 		}
@@ -1528,16 +1633,17 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				_ui->imageView_odometry->setImageDepthShown(_odomImageDepthShow);
 			}
 
-			_ui->imageView_odometry->setImage(uCvMat2QImage(odom.data().imageRaw()));
-			if(_ui->imageView_odometry->isImageDepthShown() && !odom.data().depthOrRightRaw().empty())
+			_ui->imageView_odometry->setImage(uCvMat2QImage(data->imageRaw()));
+			if(_ui->imageView_odometry->isImageDepthShown() && !data->depthOrRightRaw().empty())
 			{
-				_ui->imageView_odometry->setImageDepth(odom.data().depthOrRightRaw());
+				_ui->imageView_odometry->setImageDepth(data->depthOrRightRaw());
 			}
 
 			if( odom.info().type == (int)Odometry::kTypeF2M ||
-				odom.info().type == (int)Odometry::kTypeORBSLAM2 ||
+				odom.info().type == (int)Odometry::kTypeORBSLAM ||
 				odom.info().type == (int)Odometry::kTypeMSCKF ||
-				odom.info().type == (int)Odometry::kTypeVINS)
+				odom.info().type == (int)Odometry::kTypeVINS ||
+				odom.info().type == (int)Odometry::kTypeOpenVINS)
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
 				{
@@ -1579,12 +1685,14 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				}
 			}
 		}
-		if(!odom.data().imageRaw().empty())
+		if(!data->imageRaw().empty())
 		{
-			_ui->imageView_odometry->setSceneRect(QRectF(0,0,(float)odom.data().imageRaw().cols, (float)odom.data().imageRaw().rows));
+			_ui->imageView_odometry->setSceneRect(QRectF(0,0,(float)data->imageRaw().cols, (float)data->imageRaw().rows));
 		}
 
 		_ui->imageView_odometry->update();
+
+		UDEBUG("Time update imageview: %fs", time.ticks());
 	}
 
 	if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
@@ -1593,145 +1701,150 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	}
 
 	//Process info
-	_ui->statsToolBox->updateStat("Odometry/Inliers/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.inliers, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/InliersMeanDistance/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.inliersMeanDistance, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/InliersDistribution/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.inliersDistribution, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().reg.inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpRotation, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpTranslation, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpStructuralComplexity, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/ICPStructuralDistribution/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpStructuralDistribution, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/ICPCorrespondences/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpCorrespondences, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.matches, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().reg.matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().reg.covariance.at<double>(0,0)), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.covariance.at<double>(0,0), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().reg.covariance.at<double>(5,5)), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.covariance.at<double>(5,5), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	if(odom.info().timeParticleFiltering>0.0f)
+	if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
 	{
-		_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	}
-	if(odom.info().gravityRollError>0.0f || odom.info().gravityPitchError > 0.0f)
-	{
-		_ui->statsToolBox->updateStat("Odometry/GravityRollError/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().gravityRollError*180/M_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/GravityPitchError/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().gravityPitchError*180/M_PI, _preferencesDialog->isCacheSavedInFigures());
-	}
-	_ui->statsToolBox->updateStat("Odometry/Features/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().features, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localMapSize, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/LocalScanMapSize/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localScanMapSize, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/LocalKeyFrames/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localKeyFrames, _preferencesDialog->isCacheSavedInFigures());
-	if(odom.info().localBundleTime > 0.0f)
-	{
-		_ui->statsToolBox->updateStat("Odometry/localBundleOutliers/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localBundleOutliers, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/localBundleConstraints/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localBundleConstraints, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/localBundleTime/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localBundleTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
-	}
-	_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().keyFrameAdded?1.0f:0.0f, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/ID/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.data().id(), _preferencesDialog->isCacheSavedInFigures());
-
-	Transform odomT;
-	float dist=0.0f, x,y,z, roll,pitch,yaw;
-	if(!odom.info().transform.isNull())
-	{
-		odomT = odom.info().transform;
-		odom.info().transform.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		dist = odom.info().transform.getNorm();
-		_ui->statsToolBox->updateStat("Odometry/T/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Tx/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Ty/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Tz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Troll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Tpitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Tyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-	}
-
-	if(!odom.info().transformFiltered.isNull())
-	{
-		odomT = odom.info().transformFiltered;
-		odom.info().transformFiltered.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		dist = odom.info().transformFiltered.getNorm();
-		_ui->statsToolBox->updateStat("Odometry/TF/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TFx/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TFy/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TFz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TFroll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TFpitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TFyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-	}
-	if(odom.info().interval > 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Interval/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().interval*1000.f, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Speed/kph", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist/odom.info().interval*3.6f, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Speed/mph", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist/odom.info().interval*2.237f, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Speed/mps", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist/odom.info().interval, _preferencesDialog->isCacheSavedInFigures());
-	}
-
-	if(!odom.info().guessVelocity.isNull())
-	{
-		odom.info().guessVelocity.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		dist = odom.info().guessVelocity.getNorm();
-		_ui->statsToolBox->updateStat("Odometry/SpeedGuess/kph", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist*3.6f, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/SpeedGuess/mph", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist*2.237f, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/SpeedGuess/mps", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist, _preferencesDialog->isCacheSavedInFigures());
-	}
-
-	if(!odom.info().transformGroundTruth.isNull())
-	{
-		if(!odomT.isNull())
+		_ui->statsToolBox->updateStat("Odometry/Inliers/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliers, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/InliersMeanDistance/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersMeanDistance, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/InliersDistribution/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.inliersDistribution, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().features<=0?0.0f:float(odom.info().reg.inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpRotation, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpTranslation, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpStructuralComplexity, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/ICPStructuralDistribution/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpStructuralDistribution, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/ICPCorrespondences/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpCorrespondences, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/ICPRMS/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.icpRMS, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.matches, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().features<=0?0.0f:float(odom.info().reg.matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), sqrt((float)odom.info().reg.covariance.at<double>(0,0)), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.covariance.at<double>(0,0), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/StdDevAng/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), sqrt((float)odom.info().reg.covariance.at<double>(5,5)), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.covariance.at<double>(5,5), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		if(odom.info().timeParticleFiltering>0.0f)
 		{
-			rtabmap::Transform diff = odom.info().transformGroundTruth.inverse()*odomT;
-			_ui->statsToolBox->updateStat("Odometry/TG_error_lin/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), diff.getNorm(), _preferencesDialog->isCacheSavedInFigures());
-			_ui->statsToolBox->updateStat("Odometry/TG_error_ang/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), diff.getAngle()*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeParticleFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		}
+		if(odom.info().gravityRollError>0.0f || odom.info().gravityPitchError > 0.0f)
+		{
+			_ui->statsToolBox->updateStat("Odometry/GravityRollError/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().gravityRollError*180/M_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/GravityPitchError/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().gravityPitchError*180/M_PI, _preferencesDialog->isCacheSavedInFigures());
+		}
+		_ui->statsToolBox->updateStat("Odometry/Features/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().features, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localMapSize, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/LocalScanMapSize/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localScanMapSize, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/LocalKeyFrames/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localKeyFrames, _preferencesDialog->isCacheSavedInFigures());
+		if(odom.info().localBundleTime > 0.0f)
+		{
+			_ui->statsToolBox->updateStat("Odometry/localBundleOutliers/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleOutliers, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/localBundleConstraints/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleConstraints, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/localBundleTime/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().localBundleTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		}
+		_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().keyFrameAdded?1.0f:0.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/ID/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)data->id(), _preferencesDialog->isCacheSavedInFigures());
+
+		Transform odomT;
+		float dist=0.0f, x,y,z, roll,pitch,yaw;
+		if(!odom.info().transform.isNull())
+		{
+			odomT = odom.info().transform;
+			odom.info().transform.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+			dist = odom.info().transform.getNorm();
+			_ui->statsToolBox->updateStat("Odometry/T/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Tx/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), x, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Ty/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), y, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Tz/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), z, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Troll/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Tpitch/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Tyaw/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
 		}
 
-		odom.info().transformGroundTruth.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		dist = odom.info().transformGroundTruth.getNorm();
-		_ui->statsToolBox->updateStat("Odometry/TG/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TGx/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TGy/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TGz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TGroll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TGpitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/TGyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+		if(!odom.info().transformFiltered.isNull())
+		{
+			odomT = odom.info().transformFiltered;
+			odom.info().transformFiltered.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+			dist = odom.info().transformFiltered.getNorm();
+			_ui->statsToolBox->updateStat("Odometry/TF/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TFx/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), x, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TFy/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), y, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TFz/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), z, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TFroll/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TFpitch/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TFyaw/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+		}
 		if(odom.info().interval > 0)
 		{
-			_ui->statsToolBox->updateStat("Odometry/SpeedG/kph", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist/odom.info().interval*3.6f, _preferencesDialog->isCacheSavedInFigures());
-			_ui->statsToolBox->updateStat("Odometry/SpeedG/mph", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist/odom.info().interval*2.237f, _preferencesDialog->isCacheSavedInFigures());
-			_ui->statsToolBox->updateStat("Odometry/SpeedG/mps", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), dist/odom.info().interval, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Interval/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().interval*1000.f, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Speed/kph", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist/odom.info().interval*3.6f, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Speed/mph", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist/odom.info().interval*2.237f, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Speed/mps", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist/odom.info().interval, _preferencesDialog->isCacheSavedInFigures());
+
+			if(!odom.info().guess.isNull())
+			{
+				odom.info().guess.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+				dist = odom.info().guess.getNorm();
+				_ui->statsToolBox->updateStat("Odometry/SpeedGuess/kph", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist/odom.info().interval*3.6f, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("Odometry/SpeedGuess/mph", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist/odom.info().interval*2.237f, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("Odometry/SpeedGuess/mps", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist/odom.info().interval, _preferencesDialog->isCacheSavedInFigures());
+			}
 		}
-	}
 
-	//cumulative pose
-	if(!odom.pose().isNull())
-	{
-		odom.pose().getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		_ui->statsToolBox->updateStat("Odometry/Px/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Py/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Pz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Proll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Ppitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/Pyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-	}
-	if(!odom.data().groundTruth().isNull())
-	{
-		odom.data().groundTruth().getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		_ui->statsToolBox->updateStat("Odometry/PGx/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/PGy/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/PGz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/PGroll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/PGpitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Odometry/PGyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
-	}
+		if(!odom.info().transformGroundTruth.isNull())
+		{
+			if(!odomT.isNull())
+			{
+				rtabmap::Transform diff = odom.info().transformGroundTruth.inverse()*odomT;
+				_ui->statsToolBox->updateStat("Odometry/TG_error_lin/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), diff.getNorm(), _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("Odometry/TG_error_ang/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), diff.getAngle()*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			}
 
-	if(odom.info().distanceTravelled > 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Distance/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().distanceTravelled, _preferencesDialog->isCacheSavedInFigures());
-	}
+			odom.info().transformGroundTruth.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+			dist = odom.info().transformGroundTruth.getNorm();
+			_ui->statsToolBox->updateStat("Odometry/TG/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TGx/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), x, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TGy/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), y, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TGz/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), z, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TGroll/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TGpitch/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/TGyaw/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			if(odom.info().interval > 0)
+			{
+				_ui->statsToolBox->updateStat("Odometry/SpeedG/kph", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist/odom.info().interval*3.6f, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("Odometry/SpeedG/mph", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist/odom.info().interval*2.237f, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("Odometry/SpeedG/mps", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), dist/odom.info().interval, _preferencesDialog->isCacheSavedInFigures());
+			}
+		}
 
-	_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), time.elapsed()*1000.0, _preferencesDialog->isCacheSavedInFigures());
+		//cumulative pose
+		if(!odom.pose().isNull())
+		{
+			odom.pose().getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+			_ui->statsToolBox->updateStat("Odometry/Px/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), x, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Py/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), y, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Pz/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), z, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Proll/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Ppitch/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/Pyaw/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+		}
+		if(!data->groundTruth().isNull())
+		{
+			data->groundTruth().getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+			_ui->statsToolBox->updateStat("Odometry/PGx/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), x, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/PGy/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), y, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/PGz/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), z, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/PGroll/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/PGpitch/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Odometry/PGyaw/deg", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+		}
+
+		if(odom.info().distanceTravelled > 0)
+		{
+			_ui->statsToolBox->updateStat("Odometry/Distance/m", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), odom.info().distanceTravelled, _preferencesDialog->isCacheSavedInFigures());
+		}
+
+		_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), time.elapsed()*1000.0, _preferencesDialog->isCacheSavedInFigures());
+		UDEBUG("Time updating Stats toolbox: %fs", time.ticks());
+	}
 	_processingOdometry = false;
 
 	Q_EMIT(odometryProcessed());
@@ -1780,12 +1893,23 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		bool fastMovement = (bool)uValue(stat.data(), Statistics::kMemoryFast_movement(), 0.0f);
 
+		int rehearsalMerged = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
+
 		// update cache
 		Signature signature;
 		if(stat.getLastSignatureData().id() == stat.refImageId())
 		{
 			signature = stat.getLastSignatureData();
+		}
+		else if(rehearsalMerged>0 &&
+				rehearsalMerged == stat.getLastSignatureData().id() &&
+				_cachedSignatures.contains(rehearsalMerged))
+		{
+			signature = _cachedSignatures.value(rehearsalMerged);
+		}
 
+		if(signature.id()!=0)
+		{
 			// make sure data are uncompressed
 			// We don't need to uncompress images if we don't show them
 			bool uncompressImages = !signature.sensorData().imageCompressed().empty() && (
@@ -1802,11 +1926,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			LaserScan tmpScan;
 			signature.sensorData().uncompressData(
 					uncompressImages?&tmpRgb:0,
-					uncompressImages?&tmpDepth:0,
+					uncompressImages && !signature.sensorData().depthOrRightCompressed().empty()?&tmpDepth:0,
 					uncompressScan?&tmpScan:0,
 					0, &tmpG, &tmpO, &tmpE);
 
-			if( uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())) &&
+			if( stat.getLastSignatureData().id() == stat.refImageId() &&
+				uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())) &&
 				signature.getWeight()>=0) // ignore intermediate nodes for the cache
 			{
 				if(smallMovement || fastMovement)
@@ -1834,19 +1959,22 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 
 		// For intermediate empty nodes, keep latest image shown
-		if(signature.getWeight() >= 0 &&
-		(!signature.sensorData().imageRaw().empty() || signature.getWords().size()))
+		if(signature.getWeight() >= 0)
 		{
 			_ui->imageView_source->clear();
 			_ui->imageView_loopClosure->clear();
+
+			if(signature.sensorData().imageRaw().empty() && signature.getWords().empty())
+			{
+				// To see colors
+				_ui->imageView_source->setSceneRect(QRect(0,0,640,480));
+			}
 
 			_ui->imageView_source->setBackgroundColor(_ui->imageView_source->getDefaultBackgroundColor());
 			_ui->imageView_loopClosure->setBackgroundColor(_ui->imageView_loopClosure->getDefaultBackgroundColor());
 
 			_ui->label_matchId->clear();
 
-
-			int rehearsalMerged = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 			bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
 			int proximityTimeDetections = (int)uValue(stat.data(), Statistics::kProximityTime_detections(), 0.0f);
 			bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kNeighborLinkRefiningAccepted(), 0.0f);
@@ -1908,8 +2036,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					"  Pink = In Vocabulary and in Loop Closure Signature\n"
 					"  Gray = Not Quantized to Vocabulary");
 			}
-
-			UDEBUG("time= %d ms", time.restart());
 
 			int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 			float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
@@ -1992,8 +2118,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_cachedLocalizationsCount[matchId] += 1.0f;
 			}
+			UDEBUG("time= %d ms (update detection ui)", time.restart());
 
 			//update image views
+			if(!signature.sensorData().imageRaw().empty() || signature.getWords().size())
 			{
 				cv::Mat refImage = signature.sensorData().imageRaw();
 				cv::Mat loopImage = loopSignature.sensorData().imageRaw();
@@ -2022,7 +2150,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				qimageLoopThread.join();
 				QImage img = qimageThread.getQImage();
 				QImage lcImg = qimageLoopThread.getQImage();
-				UDEBUG("time= %d ms", time.restart());
+				UDEBUG("time= %d ms (convert image to qt)", time.restart());
 
 				if(!img.isNull())
 				{
@@ -2065,8 +2193,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
 				}
 			}
+			else if(_ui->imageView_loopClosure->sceneRect().isNull() &&
+					!_ui->imageView_source->sceneRect().isNull())
+			{
+				_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
+			}
 
-			UDEBUG("time= %d ms", time.restart());
+			UDEBUG("time= %d ms (update detection imageviews)", time.restart());
 
 			// do it after scaling
 			std::multimap<int, cv::KeyPoint> wordsA;
@@ -2081,7 +2214,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 			this->drawKeypoints(wordsA, wordsB);
 
-			UDEBUG("time= %d ms", time.restart());
+			UDEBUG("time= %d ms (draw keypoints)", time.restart());
 
 			// loop closure view
 			if((stat.loopClosureId() > 0 || stat.proximityDetectionId() > 0)  &&
@@ -2097,10 +2230,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					UTimer loopTimer;
 					_loopClosureViewer->updateView(Transform(), _preferencesDialog->getAllParameters());
 					UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
-					_ui->statsToolBox->updateStat("GUI/RGB-D closure view/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(loopTimer.elapsed()*1000.0f), _preferencesDialog->isCacheSavedInFigures());
+					if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
+					{
+						_ui->statsToolBox->updateStat("GUI/RGB-D closure view/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(loopTimer.elapsed()*1000.0f), _preferencesDialog->isCacheSavedInFigures());
+					}
 				}
 
-				UDEBUG("time= %d ms", time.restart());
+				UDEBUG("time= %d ms (update loop closure viewer)", time.restart());
 			}
 		}
 
@@ -2122,20 +2258,24 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			_rawLikelihoodCurve->setData(QMap<int, float>(stat.rawLikelihood()), QMap<int, int>(stat.weights()));
 		}
+		UDEBUG("time= %d ms (update likelihood and posterior)", time.restart());
 
 		// Update statistics tool box
-		const std::map<std::string, float> & statistics = stat.data();
-		std::string odomStr =  "Odometry/";
-		for(std::map<std::string, float>::const_iterator iter = statistics.begin(); iter != statistics.end(); ++iter)
+		if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
 		{
-			//ULOGGER_DEBUG("Updating stat \"%s\"", (*iter).first.c_str());
-			if((*iter).first.size()<odomStr.size() || (*iter).first.substr(0, odomStr.size()).compare(odomStr)!=0)
+			const std::map<std::string, float> & statistics = stat.data();
+			std::string odomStr =  "Odometry/";
+			for(std::map<std::string, float>::const_iterator iter = statistics.begin(); iter != statistics.end(); ++iter)
 			{
-				_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), (*iter).second, _preferencesDialog->isCacheSavedInFigures());
+				//ULOGGER_DEBUG("Updating stat \"%s\"", (*iter).first.c_str());
+				if((*iter).first.size()<odomStr.size() || (*iter).first.substr(0, odomStr.size()).compare(odomStr)!=0)
+				{
+					_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), (*iter).second, _preferencesDialog->isCacheSavedInFigures());
+				}
 			}
 		}
 
-		UDEBUG("time= %d ms", time.restart());
+		UDEBUG("time= %d ms (update stats toolbox)", time.restart());
 
 		//======================
 		// RGB-D Mapping stuff
@@ -2177,7 +2317,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			std::map<int, Transform> poses = stat.poses();
 
-			UDEBUG("time= %d ms", time.restart());
+			UDEBUG("time= %d ms (update gt-gps stuff)", time.restart());
 
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 			if(_preferencesDialog->isFramesShown())
@@ -2265,11 +2405,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			_odometryReceived = false;
 
-			UDEBUG("time= %d ms", time.restart());
+			UDEBUG("time= %d ms (update map cloud)", time.restart());
 
-			for(std::map<std::string, float>::iterator iter=updateCloudSats.begin(); iter!=updateCloudSats.end(); ++iter)
+			if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
 			{
-				_ui->statsToolBox->updateStat(iter->first.c_str(), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(iter->second), _preferencesDialog->isCacheSavedInFigures());
+				for(std::map<std::string, float>::iterator iter=updateCloudSats.begin(); iter!=updateCloudSats.end(); ++iter)
+				{
+					_ui->statsToolBox->updateStat(iter->first.c_str(), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(iter->second), _preferencesDialog->isCacheSavedInFigures());
+				}
 			}
 		}
 		_odometryCorrection = stat.mapCorrection();
@@ -2307,8 +2450,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_ui->graphicsView_graphView->setCurrentGoalID(stat.currentGoalId(), uValue(stat.poses(), stat.currentGoalId(), Transform()));
 			}
+			UDEBUG("time= %d ms (update graph view)", time.restart());
 		}
-		UDEBUG("");
 
 		_cachedSignatures.remove(0); // remove tmp negative ids
 
@@ -2322,7 +2465,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_cachedMemoryUsage += s.sensorData().getMemoryUsed();
 		}
 
-		UDEBUG("");
+		UDEBUG("time= %d ms (update cache)", time.restart());
 	}
 	else if(!stat.extended() && stat.loopClosureId()>0)
 	{
@@ -2335,7 +2478,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	}
 	float elapsedTime = static_cast<float>(totalTime.elapsed());
 	UINFO("Updating GUI time = %fs", elapsedTime/1000.0f);
-	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), elapsedTime, _preferencesDialog->isCacheSavedInFigures());
+	if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
+	{
+		_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), elapsedTime, _preferencesDialog->isCacheSavedInFigures());
+	}
 	if(_ui->actionAuto_screen_capture->isChecked() && !_autoScreenCaptureOdomSync)
 	{
 		this->captureScreen(_autoScreenCaptureRAM, _autoScreenCapturePNG);
@@ -2347,11 +2493,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_cachedMemoryUsage = 0;
 		_cachedWordsCount.clear();
 	}
-	_ui->statsToolBox->updateStat("GUI/Cache Data Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _cachedMemoryUsage/(1024*1024), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("GUI/Cache Clouds Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _createdCloudsMemoryUsage/(1024*1024), _preferencesDialog->isCacheSavedInFigures());
+	if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
+	{
+		_ui->statsToolBox->updateStat("GUI/Cache Data Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _cachedMemoryUsage/(1024*1024), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("GUI/Cache Clouds Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _createdCloudsMemoryUsage/(1024*1024), _preferencesDialog->isCacheSavedInFigures());
 #ifdef RTABMAP_OCTOMAP
-	_ui->statsToolBox->updateStat("GUI/Octomap Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _octomap->octree()->memoryUsage()/(1024*1024), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("GUI/Octomap Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _octomap->octree()->memoryUsage()/(1024*1024), _preferencesDialog->isCacheSavedInFigures());
 #endif
+	}
 	if(_state != kMonitoring && _state != kDetecting)
 	{
 		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
@@ -3142,7 +3291,7 @@ void MainWindow::updateMapCloud(
 	}
 
 	UDEBUG("");
-	_cloudViewer->update();
+	_cloudViewer->refreshView();
 	UDEBUG("");
 }
 
@@ -3742,7 +3891,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			added = _cloudViewer->addCloud(scanName, cloudRGBWithNormals, pose, color);
 			if(added && nodeId > 0)
 			{
-				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGBWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZRGBNormal, scan.localTransform());
+				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGBWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 			}
 		}
 		else if(cloudIWithNormals.get())
@@ -3752,11 +3901,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				if(scan.is2d())
 				{
-					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYINormal, scan.localTransform());
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 				}
 				else
 				{
-					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZINormal, scan.localTransform());
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 				}
 			}
 		}
@@ -3767,11 +3916,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				if(scan.is2d())
 				{
-					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYNormal, scan.localTransform());
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 				}
 				else
 				{
-					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZNormal, scan.localTransform());
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 				}
 			}
 		}
@@ -3780,7 +3929,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			added = _cloudViewer->addCloud(scanName, cloudRGB, pose, color);
 			if(added && nodeId > 0)
 			{
-				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGB, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZRGB, scan.localTransform());
+				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGB, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 			}
 		}
 		else if(cloudI.get())
@@ -3790,11 +3939,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				if(scan.is2d())
 				{
-					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYI, scan.localTransform());
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 				}
 				else
 				{
-					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZI, scan.localTransform());
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 				}
 			}
 		}
@@ -3806,11 +3955,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				if(scan.is2d())
 				{
-					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXY, scan.localTransform());
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 				}
 				else
 				{
-					scan = LaserScan(util3d::laserScanFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), LaserScan::kXYZ, scan.localTransform());
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.rangeMax(), scan.localTransform());
 				}
 			}
 		}
@@ -4056,7 +4205,7 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 			}
 		}
 
-		_cloudViewer->update();
+		_cloudViewer->refreshView();
 	}
 }
 
@@ -4327,12 +4476,14 @@ void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathE
 		_ui->graphicsView_graphView->setGlobalPath(event.getPoses());
 	}
 
-	_ui->statsToolBox->updateStat("Planning/From/", float(event.getPoses().size()?event.getPoses().begin()->first:0), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Planning/Time/ms", float(event.getPlanningTime()*1000.0), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Planning/Goal/", float(event.getGoal()), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Planning/Poses/", float(event.getPoses().size()), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Planning/Length/m", float(graph::computePathLength(event.getPoses())), _preferencesDialog->isCacheSavedInFigures());
-
+	if(_preferencesDialog->isCacheSavedInFigures() || _ui->statsToolBox->isVisible())
+	{
+		_ui->statsToolBox->updateStat("Planning/From/", float(event.getPoses().size()?event.getPoses().begin()->first:0), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Planning/Time/ms", float(event.getPlanningTime()*1000.0), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Planning/Goal/", float(event.getGoal()), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Planning/Poses/", float(event.getPoses().size()), _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Planning/Length/m", float(graph::computePathLength(event.getPoses())), _preferencesDialog->isCacheSavedInFigures());
+	}
 	if(_preferencesDialog->notifyWhenNewGlobalPathIsReceived())
 	{
 		// use MessageBox
@@ -4801,10 +4952,12 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionStereoDC1394->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDC1394);
 	_ui->actionStereoFlyCapture2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcFlyCapture2);
 	_ui->actionStereoZed->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoZed);
+	_ui->actionZed_Open_Capture->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoZedOC);
     _ui->actionStereoTara->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoTara);
 	_ui->actionStereoUsb->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoUsb);
 	_ui->actionRealSense2_T265->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoRealSense2);
 	_ui->actionMYNT_EYE_S_SDK->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoMyntEye);
+	_ui->actionDepthAI->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoDepthAI);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -5216,9 +5369,27 @@ void MainWindow::editDatabase()
 	}
 }
 
-Camera * MainWindow::createCamera()
+Camera * MainWindow::createCamera(
+		Camera ** odomSensor,
+		Transform & odomSensorExtrinsics,
+		double & odomSensorTimeOffset,
+		float & odomSensorScaleFactor)
 {
-	return _preferencesDialog->createCamera();
+	Camera * camera = _preferencesDialog->createCamera();
+
+	if(camera &&
+	   _preferencesDialog->getOdomSourceDriver() != PreferencesDialog::kSrcUndef &&
+	   _preferencesDialog->getOdomSourceDriver() != _preferencesDialog->getSourceDriver() &&
+		!(_preferencesDialog->getOdomSourceDriver() == PreferencesDialog::kSrcStereoRealSense2 &&
+		  _preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRealSense2))
+	{
+		UINFO("Create Odom Sensor %d (camera = %d)",
+				_preferencesDialog->getOdomSourceDriver(),
+				_preferencesDialog->getSourceDriver());
+		*odomSensor = _preferencesDialog->createOdomSensor(odomSensorExtrinsics, odomSensorTimeOffset, odomSensorScaleFactor);
+	}
+
+	return camera;
 }
 
 void MainWindow::startDetection()
@@ -5320,14 +5491,25 @@ void MainWindow::startDetection()
 	}
 
 
-	Camera * camera = this->createCamera();
+	double poseTimeOffset = 0.0;
+	float scaleFactor = 0.0f;
+	Transform extrinsics;
+	Camera * odomSensor = 0;
+	Camera * camera = this->createCamera(&odomSensor, extrinsics, poseTimeOffset, scaleFactor);
 	if(!camera)
 	{
 		Q_EMIT stateChanged(kInitialized);
 		return;
 	}
 
-	_camera = new CameraThread(camera, parameters);
+	if(odomSensor)
+	{
+		_camera = new CameraThread(camera, odomSensor, extrinsics, poseTimeOffset, scaleFactor, _preferencesDialog->isOdomSensorAsGt(), parameters);
+	}
+	else
+	{
+		_camera = new CameraThread(camera, _preferencesDialog->isOdomSensorAsGt(), parameters);
+	}
 	_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 	_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
@@ -5344,7 +5526,7 @@ void MainWindow::startDetection()
 			(float)_preferencesDialog->getSourceScanForceGroundNormalsUp());
 	if(_preferencesDialog->getIMUFilteringStrategy()>0 && dynamic_cast<DBReader*>(camera) == 0)
 	{
-		_camera->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters);
+		_camera->enableIMUFiltering(_preferencesDialog->getIMUFilteringStrategy()-1, parameters, _preferencesDialog->getIMUFilteringBaseFrameConversion());
 	}
 	if(_preferencesDialog->isDepthFilteringAvailable())
 	{
@@ -5394,7 +5576,7 @@ void MainWindow::startDetection()
 				_imuThread = 0;
 			}
 
-			if(!camera->odomProvided() && !_preferencesDialog->isOdomDisabled())
+			if((!_camera->odomProvided() || _preferencesDialog->isOdomSensorAsGt()) && !_preferencesDialog->isOdomDisabled())
 			{
 				ParametersMap odomParameters = parameters;
 				if(_preferencesDialog->getOdomRegistrationApproach() < 3)
@@ -5421,10 +5603,13 @@ void MainWindow::startDetection()
 					_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages) &&
 				   !_preferencesDialog->getIMUPath().isEmpty())
 				{
-					if(odomStrategy != Odometry::kTypeOkvis && odomStrategy != Odometry::kTypeMSCKF && odomStrategy != Odometry::kTypeVINS)
+					if( odomStrategy != Odometry::kTypeOkvis &&
+						odomStrategy != Odometry::kTypeMSCKF &&
+						odomStrategy != Odometry::kTypeVINS &&
+						odomStrategy != Odometry::kTypeOpenVINS)
 					{
 						QMessageBox::warning(this, tr("Source IMU Path"),
-								tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);
+								tr("IMU path is set but odometry chosen doesn't support asynchronous IMU, ignoring IMU..."), QMessageBox::Ok);
 					}
 					else
 					{
@@ -5664,6 +5849,10 @@ void MainWindow::exportPosesRGBDSLAM()
 {
 	exportPoses(10);
 }
+void MainWindow::exportPosesRGBDSLAMID()
+{
+	exportPoses(11);
+}
 void MainWindow::exportPosesKITTI()
 {
 	exportPoses(2);
@@ -5785,7 +5974,7 @@ void MainWindow::exportPoses(int format)
 		}
 
 		std::map<int, double> stamps;
-		if(format == 1 || format == 10)
+		if(format == 1 || format == 10 || format == 11)
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
@@ -6023,186 +6212,195 @@ void MainWindow::postProcessing()
 						   addedLinks.find(to) == addedLinks.end() &&
 						   rtabmap::graph::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
 						{
-							checkedLoopClosures.insert(std::make_pair(from, to));
+							// Reverify if in the bounds with the current optimized graph
+							Transform delta = _currentPosesMap.at(from).inverse() * _currentPosesMap.at(to);
+							if(delta.getNorm() < clusterRadius)
+							{
+								checkedLoopClosures.insert(std::make_pair(from, to));
 
-							if(!_cachedSignatures.contains(from))
-							{
-								UERROR("Didn't find signature %d", from);
-							}
-							else if(!_cachedSignatures.contains(to))
-							{
-								UERROR("Didn't find signature %d", to);
-							}
-							else
-							{
-								Signature signatureFrom = _cachedSignatures[from];
-								Signature signatureTo = _cachedSignatures[to];
-
-								if(signatureFrom.getWeight() >= 0 &&
-								   signatureTo.getWeight() >= 0) // ignore intermediate nodes
+								if(!_cachedSignatures.contains(from))
 								{
-									Transform transform;
-									RegistrationInfo info;
-									if(parameters.find(Parameters::kRegStrategy()) != parameters.end() &&
-										parameters.at(Parameters::kRegStrategy()).compare("1") == 0)
-									{
-										uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), "2"));
-									}
-									Registration * registration = Registration::create(parameters);
+									UERROR("Didn't find signature %d", from);
+								}
+								else if(!_cachedSignatures.contains(to))
+								{
+									UERROR("Didn't find signature %d", to);
+								}
+								else
+								{
+									Signature signatureFrom = _cachedSignatures[from];
+									Signature signatureTo = _cachedSignatures[to];
 
-									if(reextractFeatures)
+									if(signatureFrom.getWeight() >= 0 &&
+									   signatureTo.getWeight() >= 0) // ignore intermediate nodes
 									{
-										signatureFrom.sensorData().uncompressData();
-										signatureTo.sensorData().uncompressData();
+										Transform transform;
+										RegistrationInfo info;
+										if(parameters.find(Parameters::kRegStrategy()) != parameters.end() &&
+											parameters.at(Parameters::kRegStrategy()).compare("1") == 0)
+										{
+											uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), "2"));
+										}
+										Registration * registration = Registration::create(parameters);
 
-										if(signatureFrom.sensorData().imageRaw().empty() &&
-										   signatureTo.sensorData().imageRaw().empty())
+										if(reextractFeatures)
 										{
-											UWARN("\"%s\" is false and signatures (%d and %d) don't have raw "
-													"images. Update the cache.",
-												Parameters::kRGBDLoopClosureReextractFeatures().c_str());
-										}
-										else
-										{
-											signatureFrom.removeAllWords();
-											signatureFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-											signatureTo.removeAllWords();
-											signatureTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
-										}
-									}
-									else if(!reextractFeatures && signatureFrom.getWords().empty() && signatureTo.getWords().empty())
-									{
-										UWARN("\"%s\" is false and signatures (%d and %d) don't have words, "
-												"registration will not be possible. Set \"%s\" to true.",
-												Parameters::kRGBDLoopClosureReextractFeatures().c_str(),
-												signatureFrom.id(),
-												signatureTo.id(),
-												Parameters::kRGBDLoopClosureReextractFeatures().c_str());
-									}
-									transform = registration->computeTransformation(signatureFrom, signatureTo, Transform(), &info);
-									delete registration;
-									if(!transform.isNull())
-									{
-										//optimize the graph to see if the new constraint is globally valid
-										bool updateConstraint = true;
-										cv::Mat information = info.covariance.inv();
-										if(odomMaxInf.size() == 6 && information.cols==6 && information.rows==6)
-										{
-											for(int i=0; i<6; ++i)
+											signatureFrom.sensorData().uncompressData();
+											signatureTo.sensorData().uncompressData();
+
+											if(signatureFrom.sensorData().imageRaw().empty() &&
+											   signatureTo.sensorData().imageRaw().empty())
 											{
-												if(information.at<double>(i,i) > odomMaxInf[i])
-												{
-													information.at<double>(i,i) = odomMaxInf[i];
-												}
-											}
-										}
-										if(optimizeMaxError > 0.0f && optimizeIterations > 0)
-										{
-											int fromId = from;
-											int mapId = _currentMapIds.at(from);
-											// use first node of the map containing from
-											for(std::map<int, int>::iterator iter=_currentMapIds.begin(); iter!=_currentMapIds.end(); ++iter)
-											{
-												if(iter->second == mapId && _currentPosesMap.find(iter->first)!=_currentPosesMap.end())
-												{
-													fromId = iter->first;
-													break;
-												}
-											}
-											std::multimap<int, Link> linksIn = _currentLinksMap;
-											linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
-											const Link * maxLinearLink = 0;
-											const Link * maxAngularLink = 0;
-											float maxLinearError = 0.0f;
-											float maxAngularError = 0.0f;
-											std::map<int, Transform> poses;
-											std::multimap<int, Link> links;
-											UASSERT(_currentPosesMap.find(fromId) != _currentPosesMap.end());
-											UASSERT_MSG(_currentPosesMap.find(from) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
-											UASSERT_MSG(_currentPosesMap.find(to) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-											optimizer->getConnectedGraph(fromId, _currentPosesMap, linksIn, poses, links);
-											UASSERT(poses.find(fromId) != poses.end());
-											UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
-											UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
-											UASSERT(graph::findLink(links, from, to) != links.end());
-											poses = optimizer->optimize(fromId, poses, links);
-											std::string msg;
-											if(poses.size())
-											{
-												float maxLinearErrorRatio = 0.0f;
-												float maxAngularErrorRatio = 0.0f;
-												graph::computeMaxGraphErrors(
-														poses,
-														links,
-														maxLinearErrorRatio,
-														maxAngularErrorRatio,
-														maxLinearError,
-														maxAngularError,
-														&maxLinearLink,
-														&maxAngularLink);
-												if(maxLinearLink)
-												{
-													UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-													if(maxLinearErrorRatio > optimizeMaxError)
-													{
-														msg = uFormat("Rejecting edge %d->%d because "
-																  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
-																  "\"%s\" is %f.",
-																  from,
-																  to,
-																  maxLinearError,
-																  maxLinearLink->from(),
-																  maxLinearLink->to(),
-																  maxLinearErrorRatio,
-																  sqrt(maxLinearLink->transVariance()),
-																  Parameters::kRGBDOptimizeMaxError().c_str(),
-																  optimizeMaxError);
-													}
-												}
-												else if(maxAngularLink)
-												{
-													UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-													if(maxAngularErrorRatio > optimizeMaxError)
-													{
-														msg = uFormat("Rejecting edge %d->%d because "
-																  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
-																  "\"%s\" is %f m.",
-																  from,
-																  to,
-																  maxAngularError*180.0f/M_PI,
-																  maxAngularLink->from(),
-																  maxAngularLink->to(),
-																  maxAngularErrorRatio,
-																  sqrt(maxAngularLink->rotVariance()),
-																  Parameters::kRGBDOptimizeMaxError().c_str(),
-																  optimizeMaxError);
-													}
-												}
+												UWARN("\"%s\" is false and signatures (%d and %d) don't have raw "
+														"images. Update the cache.",
+													Parameters::kRGBDLoopClosureReextractFeatures().c_str());
 											}
 											else
 											{
-												msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
-														  from,
-														  to);
-											}
-											if(!msg.empty())
-											{
-												UWARN("%s", msg.c_str());
-												_progressDialog->appendText(tr("%1").arg(msg.c_str()));
-												QApplication::processEvents();
-												updateConstraint = false;
+												signatureFrom.removeAllWords();
+												signatureFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+												signatureTo.removeAllWords();
+												signatureTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 											}
 										}
-
-										if(updateConstraint)
+										else if(!reextractFeatures && signatureFrom.getWords().empty() && signatureTo.getWords().empty())
 										{
-											UINFO("Added new loop closure between %d and %d.", from, to);
-											addedLinks.insert(from);
-											addedLinks.insert(to);
+											UWARN("\"%s\" is false and signatures (%d and %d) don't have words, "
+													"registration will not be possible. Set \"%s\" to true.",
+													Parameters::kRGBDLoopClosureReextractFeatures().c_str(),
+													signatureFrom.id(),
+													signatureTo.id(),
+													Parameters::kRGBDLoopClosureReextractFeatures().c_str());
+										}
+										transform = registration->computeTransformation(signatureFrom, signatureTo, Transform(), &info);
+										delete registration;
+										if(!transform.isNull())
+										{
+											//optimize the graph to see if the new constraint is globally valid
+											bool updateConstraint = true;
+											cv::Mat information = info.covariance.inv();
+											if(odomMaxInf.size() == 6 && information.cols==6 && information.rows==6)
+											{
+												for(int i=0; i<6; ++i)
+												{
+													if(information.at<double>(i,i) > odomMaxInf[i])
+													{
+														information.at<double>(i,i) = odomMaxInf[i];
+													}
+												}
+											}
+											if(optimizeMaxError > 0.0f && optimizeIterations > 0)
+											{
+												int fromId = from;
+												int mapId = _currentMapIds.at(from);
+												// use first node of the map containing from
+												for(std::map<int, int>::iterator iter=_currentMapIds.begin(); iter!=_currentMapIds.end(); ++iter)
+												{
+													if(iter->second == mapId && _currentPosesMap.find(iter->first)!=_currentPosesMap.end())
+													{
+														fromId = iter->first;
+														break;
+													}
+												}
+												std::multimap<int, Link> linksIn = _currentLinksMap;
+												linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
+												const Link * maxLinearLink = 0;
+												const Link * maxAngularLink = 0;
+												float maxLinearError = 0.0f;
+												float maxAngularError = 0.0f;
+												std::map<int, Transform> poses;
+												std::multimap<int, Link> links;
+												UASSERT(_currentPosesMap.find(fromId) != _currentPosesMap.end());
+												UASSERT_MSG(_currentPosesMap.find(from) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+												UASSERT_MSG(_currentPosesMap.find(to) != _currentPosesMap.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+												optimizer->getConnectedGraph(fromId, _currentPosesMap, linksIn, poses, links);
+												UASSERT(poses.find(fromId) != poses.end());
+												UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+												UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+												UASSERT(graph::findLink(links, from, to) != links.end());
+												poses = optimizer->optimize(fromId, poses, links);
+												std::string msg;
+												if(poses.size())
+												{
+													float maxLinearErrorRatio = 0.0f;
+													float maxAngularErrorRatio = 0.0f;
+													graph::computeMaxGraphErrors(
+															poses,
+															links,
+															maxLinearErrorRatio,
+															maxAngularErrorRatio,
+															maxLinearError,
+															maxAngularError,
+															&maxLinearLink,
+															&maxAngularLink);
+													if(maxLinearLink)
+													{
+														UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+														if(maxLinearErrorRatio > optimizeMaxError)
+														{
+															msg = uFormat("Rejecting edge %d->%d because "
+																	  "graph error is too large after optimization (%f m for edge %d->%d with ratio %f > std=%f m). "
+																	  "\"%s\" is %f.",
+																	  from,
+																	  to,
+																	  maxLinearError,
+																	  maxLinearLink->from(),
+																	  maxLinearLink->to(),
+																	  maxLinearErrorRatio,
+																	  sqrt(maxLinearLink->transVariance()),
+																	  Parameters::kRGBDOptimizeMaxError().c_str(),
+																	  optimizeMaxError);
+														}
+													}
+													else if(maxAngularLink)
+													{
+														UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+														if(maxAngularErrorRatio > optimizeMaxError)
+														{
+															msg = uFormat("Rejecting edge %d->%d because "
+																	  "graph error is too large after optimization (%f deg for edge %d->%d with ratio %f > std=%f deg). "
+																	  "\"%s\" is %f m.",
+																	  from,
+																	  to,
+																	  maxAngularError*180.0f/M_PI,
+																	  maxAngularLink->from(),
+																	  maxAngularLink->to(),
+																	  maxAngularErrorRatio,
+																	  sqrt(maxAngularLink->rotVariance()),
+																	  Parameters::kRGBDOptimizeMaxError().c_str(),
+																	  optimizeMaxError);
+														}
+													}
+												}
+												else
+												{
+													msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
+															  from,
+															  to);
+												}
+												if(!msg.empty())
+												{
+													UWARN("%s", msg.c_str());
+													_progressDialog->appendText(tr("%1").arg(msg.c_str()));
+													QApplication::processEvents();
+													updateConstraint = false;
+												}
+												else
+												{
+													_currentPosesMap = poses;
+												}
+											}
 
-											_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
-											++loopClosuresAdded;
-											_progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+											if(updateConstraint)
+											{
+												UINFO("Added new loop closure between %d and %d.", from, to);
+												addedLinks.insert(from);
+												addedLinks.insert(to);
+
+												_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, information)));
+												++loopClosuresAdded;
+												_progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+											}
 										}
 									}
 								}
@@ -6571,6 +6769,10 @@ void MainWindow::selectStereoZed()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoZed);
 }
+void MainWindow::selectStereoZedOC()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoZedOC);
+}
 
 void MainWindow::selectStereoTara()
 {
@@ -6585,6 +6787,11 @@ void MainWindow::selectStereoUsb()
 void MainWindow::selectMyntEyeS()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoMyntEye);
+}
+
+void MainWindow::selectDepthAI()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoDepthAI);
 }
 
 void MainWindow::dumpTheMemory()
@@ -6878,6 +7085,7 @@ void MainWindow::clearTheCache()
 #endif
 	_occupancyGrid->clear();
 	_rectCameraModels.clear();
+	_rectCameraModelsOdom.clear();
 }
 
 void MainWindow::openHelp()

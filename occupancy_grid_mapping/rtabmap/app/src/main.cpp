@@ -36,6 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UConversion.h"
 
+#include <vtkObject.h>
+
 #ifdef RTABMAP_PYTHON
 #include "rtabmap/core/PythonInterface.h"
 #endif
@@ -48,8 +50,16 @@ int main(int argc, char* argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
 
+#ifdef WIN32
+	CoInitialize(nullptr);
+#endif
+
 #ifdef RTABMAP_PYTHON
 	PythonInterface python; // Make sure we initialize python in main thread
+#endif
+
+#if VTK_MAJOR_VERSION >= 8
+	vtkObject::GlobalWarningDisplayOff();
 #endif
 
 	/* Create tasks */

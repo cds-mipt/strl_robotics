@@ -40,6 +40,7 @@
      </property>
      <addaction name="actionRaw_format_txt"/>
      <addaction name="actionRGBD_SLAM_format_txt"/>
+     <addaction name="actionRGBD_SLAM_ID_format_txt"/>
      <addaction name="actionRGBD_SLAM_motion_capture_format_txt"/>
      <addaction name="actionKITTI_format_txt"/>
      <addaction name="actionTORO_graph"/>
@@ -267,6 +268,7 @@
          <normaloff>:/images/zed.png</normaloff>:/images/zed.png</iconset>
        </property>
        <addaction name="actionStereoZed"/>
+       <addaction name="actionZed_Open_Capture"/>
        <addaction name="actionStereoUsb"/>
       </widget>
       <widget class="QMenu" name="menuTara_Camera">
@@ -299,11 +301,22 @@
        </property>
        <addaction name="actionMYNT_EYE_S_SDK"/>
       </widget>
+      <widget class="QMenu" name="menuOAK_D">
+       <property name="title">
+        <string>OAK-D</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/oakd.png</normaloff>:/images/oakd.png</iconset>
+       </property>
+       <addaction name="actionDepthAI"/>
+      </widget>
       <addaction name="menuBumblebee2_2"/>
       <addaction name="menuZed_camera"/>
       <addaction name="menuTara_Camera"/>
       <addaction name="menuRealSense_T265"/>
       <addaction name="menuMynt_Eye_S"/>
+      <addaction name="menuOAK_D"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
@@ -1615,6 +1628,27 @@
    </property>
    <property name="text">
     <string>RealSense2</string>
+   </property>
+  </action>
+  <action name="actionZed_Open_Capture">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Zed Open Capture</string>
+   </property>
+  </action>
+  <action name="actionDepthAI">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>DepthAI</string>
+   </property>
+  </action>
+  <action name="actionRGBD_SLAM_ID_format_txt">
+   <property name="text">
+    <string>RGBD-SLAM + ID format (*.txt)</string>
    </property>
   </action>
  </widget>

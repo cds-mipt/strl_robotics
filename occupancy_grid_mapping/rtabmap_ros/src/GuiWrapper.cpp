@@ -95,7 +95,8 @@ GuiWrapper::GuiWrapper(int & argc, char** argv) :
 
 	ROS_INFO("rtabmapviz: Using configuration from \"%s\"", configFile.toStdString().c_str());
 	uSleep(500);
-	mainWindow_ = new MainWindow(new PreferencesDialogROS(configFile));
+	prefDialog_ = new PreferencesDialogROS(configFile);
+	mainWindow_ = new MainWindow(prefDialog_);
 	mainWindow_->setWindowTitle(mainWindow_->windowTitle()+" [ROS]");
 	mainWindow_->show();
 	bool paused = false;
@@ -103,11 +104,9 @@ GuiWrapper::GuiWrapper(int & argc, char** argv) :
 	mainWindow_->setMonitoringState(paused);
 
 	// To receive odometry events
-	std::string tfPrefix;
 	std::string initCachePath;
 	pnh.param("frame_id", frameId_, frameId_);
 	pnh.param("odom_frame_id", odomFrameId_, odomFrameId_); // set to use odom from TF
-	pnh.param("tf_prefix", tfPrefix, tfPrefix);
 	pnh.param("wait_for_transform", waitForTransform_, waitForTransform_);
 	pnh.param("wait_for_transform_duration",  waitForTransformDuration_, waitForTransformDuration_);
 	pnh.param("odom_sensor_sync", odomSensorSync_, odomSensorSync_);
@@ -141,16 +140,9 @@ GuiWrapper::GuiWrapper(int & argc, char** argv) :
 		QMetaObject::invokeMethod(mainWindow_, "updateCacheFromDatabase", Q_ARG(QString, QString(initCachePath.c_str())));
 	}
 
-	if(!tfPrefix.empty())
+	if(pnh.hasParam("tf_prefix"))
 	{
-		if(!frameId_.empty())
-		{
-			frameId_ = tfPrefix + "/" + frameId_;
-		}
-		if(!odomFrameId_.empty())
-		{
-			odomFrameId_ = tfPrefix + "/" + odomFrameId_;
-		}
+		ROS_ERROR("tf_prefix parameter has been removed, use directly odom_frame_id and frame_id parameters.");
 	}
 
 	UEventsManager::addHandler(this);
@@ -699,6 +691,10 @@ void GuiWrapper::commonStereoCallback(
 	{
 		lastOdomInfoUpdateTime_ = UTimer::now();
 
+		ParametersMap allParameters = prefDialog_->getAllParameters();
+		bool imagesAlreadyRectified = Parameters::defaultRtabmapImagesAlreadyRectified();
+		Parameters::parse(allParameters, Parameters::kRtabmapImagesAlreadyRectified(), imagesAlreadyRectified);
+
 		if(!rtabmap_ros::convertStereoMsg(
 				leftImageMsg,
 				rightImageMsg,
@@ -712,7 +708,7 @@ void GuiWrapper::commonStereoCallback(
 				stereoModel,
 				tfListener_,
 				waitForTransform_?waitForTransformDuration_:0.0,
-				true))
+				imagesAlreadyRectified))
 		{
 			ROS_ERROR("Could not convert stereo msgs! Aborting rtabmapviz update...");
 			return;

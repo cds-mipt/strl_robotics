@@ -234,6 +234,20 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.20.9
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/VocPath",     std::make_pair(true, Parameters::kOdomORBSLAMVocPath())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/Bf",          std::make_pair(true, Parameters::kOdomORBSLAMBf())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/ThDepth",     std::make_pair(true, Parameters::kOdomORBSLAMThDepth())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/Fps",         std::make_pair(true, Parameters::kOdomORBSLAMFps())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/MaxFeatures", std::make_pair(true, Parameters::kOdomORBSLAMMaxFeatures())));
+		removedParameters_.insert(std::make_pair("OdomORBSLAM2/MapSize",     std::make_pair(true, Parameters::kOdomORBSLAMMapSize())));
+
+		removedParameters_.insert(std::make_pair("RGBD/SavedLocalizationIgnored", std::make_pair(true, Parameters::kRGBDStartAtOrigin())));
+
+		removedParameters_.insert(std::make_pair("Icp/PMForce4DoF", std::make_pair(true, Parameters::kIcpForce4DoF())));
+		removedParameters_.insert(std::make_pair("Icp/PM",          std::make_pair(true, Parameters::kIcpStrategy()))); // convert "true" to "1"
+		removedParameters_.insert(std::make_pair("Icp/PMOutlierRatio",   std::make_pair(true, Parameters::kIcpOutlierRatio())));
+
 		// 0.20.
 		removedParameters_.insert(std::make_pair("SuperGlue/Path",           std::make_pair(true, Parameters::kPyMatcherPath())));
 		removedParameters_.insert(std::make_pair("SuperGlue/Iterations",     std::make_pair(true, Parameters::kPyMatcherIterations())));
@@ -733,6 +747,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With ZED Open Capture:";
+#ifdef RTABMAP_ZEDOC
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With RealSense:";
 #ifdef RTABMAP_REALSENSE
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -757,8 +777,20 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With DepthAI:";
+#ifdef RTABMAP_DEPTHAI
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With libpointmatcher:";
 #ifdef RTABMAP_POINTMATCHER
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With CCCoreLib:";
+#ifdef RTABMAP_CCCORELIB
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -811,8 +843,14 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+#if RTABMAP_ORB_SLAM == 3
+				str = "With ORB_SLAM3:";
+#elif RTABMAP_ORB_SLAM == 2
 				str = "With ORB_SLAM2:";
-#ifdef RTABMAP_ORB_SLAM2
+#else
+				str = "With ORB_SLAM:";
+#endif
+#ifdef RTABMAP_ORB_SLAM
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
@@ -831,6 +869,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With VINS-Fusion:";
 #ifdef RTABMAP_VINS
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With OpenVINS:";
+#ifdef RTABMAP_OPENVINS
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

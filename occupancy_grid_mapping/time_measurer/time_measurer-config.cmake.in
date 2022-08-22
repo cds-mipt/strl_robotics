@@ -1,0 +1,5 @@
+get_filename_component(time_measurer_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+set(time_measurer_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+find_library(time_measurer_LIBRARIES NAMES time_measurer NO_DEFAULT_PATH HINTS ${time_measurer_CMAKE_DIR}/../../lib/ REQUIRED)
+

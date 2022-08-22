@@ -46,29 +46,31 @@ public:
 			const std::string & pathSideBySide,
 			bool rectifyImages = false,
 			float imageRate=0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	CameraStereoVideo(
 			const std::string & pathLeft,
 			const std::string & pathRight,
 			bool rectifyImages = false,
 			float imageRate=0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	CameraStereoVideo(
 			int device,
 			bool rectifyImages = false,
 			float imageRate = 0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	CameraStereoVideo(
 			int deviceLeft,
 			int deviceRight,
 			bool rectifyImages = false,
 			float imageRate = 0.0f,
-			const Transform & localTransform = CameraModel::opticalRotation());
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoVideo();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
+
+	void setResolution(int width, int height) {_width=width, _height=height;}
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -84,6 +86,8 @@ private:
 	CameraVideo::Source src_;
 	int usbDevice_;
 	int usbDevice2_;
+	int _width;
+	int _height;
 };
 
 } // namespace rtabmap

@@ -142,12 +142,14 @@ void CoreWrapper::onInit()
 	bool publishTf = true;
 	double tfDelay = 0.05; // 20 Hz
 	double tfTolerance = 0.1; // 100 ms
+	std::string odomFrameIdInit;
 
 	pnh.param("config_path",         configPath_, configPath_);
 	pnh.param("database_path",       databasePath_, databasePath_);
 
 	pnh.param("frame_id",            frameId_, frameId_);
 	pnh.param("odom_frame_id",       odomFrameId_, odomFrameId_); // set to use odom from TF
+	pnh.param("odom_frame_id_init",  odomFrameIdInit, odomFrameIdInit); // set to publish map->odom TF before receiving odom topic
 	pnh.param("map_frame_id",        mapFrameId_, mapFrameId_);
 	pnh.param("ground_truth_frame_id", groundTruthFrameId_, groundTruthFrameId_);
 	pnh.param("ground_truth_base_frame_id", groundTruthBaseFrameId_, frameId_);
@@ -156,6 +158,18 @@ void CoreWrapper::onInit()
 		NODELET_ERROR("\"depth_cameras\" parameter doesn't exist "
 				"anymore! It is replaced by \"rgbd_cameras\" parameter "
 				"used when \"subscribe_rgbd\" is true");
+	}
+	if(!odomFrameIdInit.empty())
+	{
+		if(odomFrameId_.empty())
+		{
+			ROS_INFO("rtabmap: odom_frame_id_init = %s", odomFrameIdInit.c_str());
+			odomFrameId_ = odomFrameIdInit;
+		}
+		else
+		{
+			ROS_WARN("odom_frame_id_init (%s) is ignored if odom_frame_id (%s) is set.", odomFrameIdInit.c_str(), odomFrameId_.c_str());
+		}
 	}
 
 	pnh.param("publish_tf",          publishTf, publishTf);
@@ -623,20 +637,39 @@ void CoreWrapper::onInit()
 	// Init RTAB-Map
 	rtabmap_.init(parameters_, databasePath_);
 
-	if(rtabmap_.getMemory() && useSavedMap_)
+	if(rtabmap_.getMemory())
 	{
-		float xMin, yMin, gridCellSize;
-		cv::Mat map = rtabmap_.getMemory()->load2DMap(xMin, yMin, gridCellSize);
-		if(!map.empty())
+		if(useSavedMap_ && !rtabmap_.getMemory()->isIncremental())
 		{
-			NODELET_INFO("rtabmap: 2D occupancy grid map loaded (%dx%d).", map.cols, map.rows);
-			mapsManager_.set2DMap(map, xMin, yMin, gridCellSize, rtabmap_.getLocalOptimizedPoses(), rtabmap_.getMemory());
+			float xMin, yMin, gridCellSize;
+			cv::Mat map = rtabmap_.getMemory()->load2DMap(xMin, yMin, gridCellSize);
+			if(!map.empty())
+			{
+				NODELET_INFO("rtabmap: 2D occupancy grid map loaded (%dx%d).", map.cols, map.rows);
+				mapsManager_.set2DMap(map, xMin, yMin, gridCellSize, rtabmap_.getLocalOptimizedPoses(), rtabmap_.getMemory());
+			}
 		}
-	}
 
-	if(databasePath_.size() && rtabmap_.getMemory())
-	{
-		NODELET_INFO("rtabmap: Database version = \"%s\".", rtabmap_.getMemory()->getDatabaseVersion().c_str());
+		if(rtabmap_.getMemory()->getWorkingMem().size()>1)
+		{
+			NODELET_INFO("rtabmap: Working Memory = %d, Local map = %d.",
+					(int)rtabmap_.getMemory()->getWorkingMem().size()-1,
+					(int)rtabmap_.getLocalOptimizedPoses().size());
+		}
+
+		if(databasePath_.size())
+		{
+			NODELET_INFO("rtabmap: Database version = \"%s\".", rtabmap_.getMemory()->getDatabaseVersion().c_str());
+		}
+
+		if(rtabmap_.getMemory()->isIncremental())
+		{
+			NODELET_INFO("rtabmap: SLAM mode (%s=true)", Parameters::kMemIncrementalMemory().c_str());
+		}
+		else
+		{
+			NODELET_INFO("rtabmap: Localization mode (%s=false)", Parameters::kMemIncrementalMemory().c_str());
+		}
 	}
 
 	// setup services
@@ -644,6 +677,7 @@ void CoreWrapper::onInit()
 	resetSrv_ = nh.advertiseService("reset", &CoreWrapper::resetRtabmapCallback, this);
 	pauseSrv_ = nh.advertiseService("pause", &CoreWrapper::pauseRtabmapCallback, this);
 	resumeSrv_ = nh.advertiseService("resume", &CoreWrapper::resumeRtabmapCallback, this);
+	loadDatabaseSrv_ = nh.advertiseService("load_database", &CoreWrapper::loadDatabaseCallback, this);
 	triggerNewMapSrv_ = nh.advertiseService("trigger_new_map", &CoreWrapper::triggerNewMapCallback, this);
 	backupDatabase_ = nh.advertiseService("backup", &CoreWrapper::backupDatabaseCallback, this);
 	setModeLocalizationSrv_ = nh.advertiseService("set_mode_localization", &CoreWrapper::setModeLocalizationCallback, this);
@@ -1133,7 +1167,7 @@ void CoreWrapper::commonDepthCallback(
 				return;
 			}
 		}
-		else if(imageMsgs.size() == 0 || imageMsgs[0].get() == 0 || !odomUpdate(odomMsg, imageMsgs[0]->header.stamp))
+		else if(cameraInfoMsgs.size() == 0 || !odomUpdate(odomMsg, cameraInfoMsgs[0].header.stamp))
 		{
 			return;
 		}
@@ -1152,7 +1186,7 @@ void CoreWrapper::commonDepthCallback(
 			return;
 		}
 	}
-	else if(imageMsgs.size() == 0 || imageMsgs[0].get() == 0 || !odomTFUpdate(imageMsgs[0]->header.stamp))
+	else if(cameraInfoMsgs.size() == 0 || !odomTFUpdate(cameraInfoMsgs[0].header.stamp))
 	{
 		return;
 	}
@@ -1348,7 +1382,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 			rgb,
 			depth,
 			cameraModels,
-			lastPoseIntermediate_?-1:imageMsgs[0]->header.seq,
+			lastPoseIntermediate_?-1:!cameraInfoMsgs.empty()?cameraInfoMsgs[0].header.seq:0,
 			rtabmap_ros::timestampFromROS(lastPoseStamp_),
 			userData);
 
@@ -1839,7 +1873,12 @@ void CoreWrapper::process(
 		{
 			if(iter->first.header.stamp < lastPoseStamp_)
 			{
-				Transform interOdom = rtabmap_ros::transformFromPoseMsg(iter->first.pose.pose);
+				Transform interOdom;
+				if(!rtabmap_.getLocalOptimizedPoses().empty())
+				{
+					// add intermediate poses only if the current local graph is not empty
+					interOdom = rtabmap_ros::transformFromPoseMsg(iter->first.pose.pose);
+				}
 				if(!interOdom.isNull())
 				{
 					cv::Mat covariance;
@@ -1873,9 +1912,9 @@ void CoreWrapper::process(
 					else if(twoDMapping_)
 					{
 						// If 2d mapping, make sure all diagonal values of the covariance that even not used are not null.
-						covariance.at<double>(2,2) = covariance.at<double>(2,2)!=0?covariance.at<double>(2,2):1;
-						covariance.at<double>(3,3) = covariance.at<double>(3,3)!=0?covariance.at<double>(3,3):1;
-						covariance.at<double>(4,4) = covariance.at<double>(4,4)!=0?covariance.at<double>(4,4):1;
+						covariance.at<double>(2,2) = uIsFinite(covariance.at<double>(2,2)) && covariance.at<double>(2,2)!=0?covariance.at<double>(2,2):1;
+						covariance.at<double>(3,3) = uIsFinite(covariance.at<double>(3,3)) && covariance.at<double>(3,3)!=0?covariance.at<double>(3,3):1;
+						covariance.at<double>(4,4) = uIsFinite(covariance.at<double>(4,4)) && covariance.at<double>(4,4)!=0?covariance.at<double>(4,4):1;
 					}
 
 					SensorData interData(cv::Mat(), cv::Mat(), CameraModel(), -1, rtabmap_ros::timestampFromROS(iter->first.header.stamp));
@@ -1890,7 +1929,7 @@ void CoreWrapper::process(
 					std::vector<float> odomVelocity;
 					if(iter->second.timeEstimation != 0.0f)
 					{
-						OdometryInfo info = odomInfoFromROS(iter->second);
+						OdometryInfo info = odomInfoFromROS(iter->second, true);
 						externalStats = rtabmap_ros::odomInfoToStatistics(info);
 
 						if(info.interval>0.0)
@@ -2049,9 +2088,9 @@ void CoreWrapper::process(
 		else if(twoDMapping_)
 		{
 			// If 2d mapping, make sure all diagonal values of the covariance that even not used are not null.
-			covariance.at<double>(2,2) = covariance.at<double>(2,2)!=0?covariance.at<double>(2,2):1;
-			covariance.at<double>(3,3) = covariance.at<double>(3,3)!=0?covariance.at<double>(3,3):1;
-			covariance.at<double>(4,4) = covariance.at<double>(4,4)!=0?covariance.at<double>(4,4):1;
+			covariance.at<double>(2,2) = uIsFinite(covariance.at<double>(2,2)) && covariance.at<double>(2,2)!=0?covariance.at<double>(2,2):1;
+			covariance.at<double>(3,3) = uIsFinite(covariance.at<double>(3,3)) && covariance.at<double>(3,3)!=0?covariance.at<double>(3,3):1;
+			covariance.at<double>(4,4) = uIsFinite(covariance.at<double>(4,4)) && covariance.at<double>(4,4)!=0?covariance.at<double>(4,4):1;
 		}
 
 		std::map<std::string, float> externalStats;
@@ -2079,11 +2118,21 @@ void CoreWrapper::process(
 			rtabmapROSStats_.clear();
 		}
 
+		timeMsgConversion += timer.ticks();
 		if(rtabmap_.process(data, odom, covariance, odomVelocity, externalStats))
 		{
 			timeRtabmap = timer.ticks();
 			mapToOdomMutex_.lock();
 			mapToOdom_ = rtabmap_.getMapCorrection();
+
+			if(!odomFrameId.empty() && !odomFrameId_.empty() && odomFrameId_.compare(odomFrameId)!=0)
+			{
+				ROS_ERROR("Odometry received doesn't have same frame_id "
+						  "than the one previously set (old=%s, new=%s). "
+						  "Are there multiple nodes publishing on same odometry topic name? "
+						  "The new frame_id is now used.", odomFrameId_.c_str(), odomFrameId.c_str());
+			}
+
 			odomFrameId_ = odomFrameId;
 			mapToOdomMutex_.unlock();
 
@@ -2405,7 +2454,9 @@ void CoreWrapper::tagDetectionsAsyncCallback(const apriltag_ros::AprilTagDetecti
 						warned = true;
 					}
 				}
-				uInsert(tags_, std::make_pair(tagDetections.detections[i].id[0], p));
+				uInsert(tags_,
+						std::make_pair(tagDetections.detections[i].id[0],
+								std::make_pair(p, tagDetections.detections[i].size.size()==1?(float)tagDetections.detections[i].size[0]:0.0f)));
 			}
 		}
 	}
@@ -2754,6 +2805,10 @@ bool CoreWrapper::resetRtabmapCallback(std_srvs::Empty::Request&, std_srvs::Empt
 	imus_.clear();
 	imuFrameId_.clear();
 	interOdoms_.clear();
+	mapToOdomMutex_.lock();
+	mapToOdom_.setIdentity();
+	mapToOdomMutex_.unlock();
+
 	return true;
 }
 
@@ -2787,6 +2842,138 @@ bool CoreWrapper::resumeRtabmapCallback(std_srvs::Empty::Request&, std_srvs::Emp
 		nh.setParam("is_rtabmap_paused", false);
 	}
 	return true;
+}
+
+bool CoreWrapper::loadDatabaseCallback(rtabmap_ros::LoadDatabase::Request& req, rtabmap_ros::LoadDatabase::Response&)
+{
+	NODELET_INFO("LoadDatabase: Loading database (%s, clear=%s)...", req.database_path.c_str(), req.clear?"true":"false");
+	std::string newDatabasePath = uReplaceChar(req.database_path, '~', UDirectory::homeDir());
+	std::string dir = UDirectory::getDir(newDatabasePath);
+	if(!UDirectory::exists(dir))
+	{
+		ROS_ERROR("Directory %s doesn't exist! Cannot load database \"%s\"", newDatabasePath.c_str(), dir.c_str());
+		return false;
+	}
+
+	if(UFile::exists(newDatabasePath) && req.clear)
+	{
+		UFile::erase(newDatabasePath);
+	}
+
+	// Close old database
+	NODELET_INFO("LoadDatabase: Saving current map (%s)...", databasePath_.c_str());
+	if(rtabmap_.getMemory())
+	{
+		// save the grid map
+		float xMin=0.0f, yMin=0.0f, gridCellSize = 0.05f;
+		cv::Mat pixels = mapsManager_.getGridMap(xMin, yMin, gridCellSize);
+		if(!pixels.empty())
+		{
+			printf("rtabmap: 2D occupancy grid map saved.\n");
+			rtabmap_.getMemory()->save2DMap(pixels, xMin, yMin, gridCellSize);
+		}
+	}
+	rtabmap_.close();
+	NODELET_INFO("LoadDatabase: Saving current map (%s, %ld MB)... done!", databasePath_.c_str(), UFile::length(databasePath_)/(1024*1024));
+
+	covariance_ = cv::Mat();
+	lastPose_.setIdentity();
+	lastPoseIntermediate_ = false;
+	currentMetricGoal_.setNull();
+	lastPublishedMetricGoal_.setNull();
+	goalFrameId_.clear();
+	latestNodeWasReached_ = false;
+	mapsManager_.clear();
+	previousStamp_ = ros::Time(0);
+	globalPose_.header.stamp = ros::Time(0);
+	gps_ = rtabmap::GPS();
+	tags_.clear();
+	userDataMutex_.lock();
+	userData_ = cv::Mat();
+	userDataMutex_.unlock();
+	imus_.clear();
+	imuFrameId_.clear();
+	interOdoms_.clear();
+	mapToOdomMutex_.lock();
+	mapToOdom_.setIdentity();
+	mapToOdomMutex_.unlock();
+
+	// Open new database
+	databasePath_ = newDatabasePath;
+
+	// modify default parameters with those in the database
+	if(!req.clear && UFile::exists(databasePath_))
+	{
+		ParametersMap dbParameters;
+		rtabmap::DBDriver * driver = rtabmap::DBDriver::create();
+		if(driver->openConnection(databasePath_))
+		{
+			dbParameters = driver->getLastParameters(); // parameter migration is already done
+		}
+		delete driver;
+		for(ParametersMap::iterator iter=dbParameters.begin(); iter!=dbParameters.end(); ++iter)
+		{
+			if(iter->first.compare(Parameters::kRtabmapWorkingDirectory()) == 0)
+			{
+				// ignore working directory
+				continue;
+			}
+			if(parameters_.find(iter->first) == parameters_.end() &&
+				parameters_.find(iter->first)->second.compare(iter->second) !=0)
+			{
+				NODELET_WARN("RTAB-Map parameter \"%s\" from database (%s) is different "
+						"from the current used one (%s). We still keep the "
+						"current parameter value (%s). If you want to switch between databases "
+						"with different configurations, restart rtabmap node instead of using this service.",
+						iter->first.c_str(), iter->second.c_str(),
+						parameters_.find(iter->first)->second.c_str(),
+						parameters_.find(iter->first)->second.c_str());
+			}
+		}
+	}
+
+	NODELET_INFO("LoadDatabase: Loading database...");
+	rtabmap_.init(parameters_, databasePath_);
+	NODELET_INFO("LoadDatabase: Loading database... done!");
+
+	if(rtabmap_.getMemory())
+	{
+		if(useSavedMap_ && !rtabmap_.getMemory()->isIncremental())
+		{
+			float xMin, yMin, gridCellSize;
+			cv::Mat map = rtabmap_.getMemory()->load2DMap(xMin, yMin, gridCellSize);
+			if(!map.empty())
+			{
+				NODELET_INFO("LoadDatabase: 2D occupancy grid map loaded (%dx%d).", map.cols, map.rows);
+				mapsManager_.set2DMap(map, xMin, yMin, gridCellSize, rtabmap_.getLocalOptimizedPoses(), rtabmap_.getMemory());
+			}
+		}
+
+		if(rtabmap_.getMemory()->getWorkingMem().size()>1)
+		{
+			NODELET_INFO("LoadDatabase: Working Memory = %d, Local map = %d.",
+					(int)rtabmap_.getMemory()->getWorkingMem().size()-1,
+					(int)rtabmap_.getLocalOptimizedPoses().size());
+		}
+
+		if(databasePath_.size())
+		{
+			NODELET_INFO("LoadDatabase: Database version = \"%s\".", rtabmap_.getMemory()->getDatabaseVersion().c_str());
+		}
+
+		if(rtabmap_.getMemory()->isIncremental())
+		{
+			NODELET_INFO("LoadDatabase: SLAM mode (%s=true)", Parameters::kMemIncrementalMemory().c_str());
+		}
+		else
+		{
+			NODELET_INFO("LoadDatabase: Localization mode (%s=false)", Parameters::kMemIncrementalMemory().c_str());
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
 bool CoreWrapper::triggerNewMapCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&)

@@ -366,6 +366,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
 pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_EXP removeNaNFromPointCloud(
 		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud);
+pcl::PCLPointCloud2::Ptr RTABMAP_EXP removeNaNFromPointCloud(
+		const pcl::PCLPointCloud2::Ptr & cloud);
 
 
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP removeNaNNormalsFromPointCloud(
@@ -393,6 +395,14 @@ pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
 		int minNeighborsInRadius);
 pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		float radiusSearch,
 		int minNeighborsInRadius);
 

@@ -1513,7 +1513,7 @@ cv::Mat mergeTextures(
 	UASSERT(textureSize%256 == 0);
 	UDEBUG("textureSize = %d", textureSize);
 	cv::Mat globalTextures;
-	if(mesh.tex_materials.size() > 1)
+	if(!mesh.tex_materials.empty())
 	{
 		std::vector<std::pair<int, int> > textures(mesh.tex_materials.size(), std::pair<int, int>(-1,0));
 		cv::Size imageSize;
@@ -2554,7 +2554,7 @@ LaserScan computeNormals(
 		{
 			UASSERT(!laserScan.is2d());
 			pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, searchK, searchRadius);
-			return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYZRGBNormal, laserScan.localTransform());
+			return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), laserScan.localTransform());
 		}
 	}
 	else if(laserScan.hasIntensity())
@@ -2567,18 +2567,18 @@ LaserScan computeNormals(
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals2D(cloud, searchK, searchRadius);
 				if(laserScan.angleIncrement() > 0.0f)
 				{
-					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), LaserScan::kXYINormal, laserScan.rangeMin(), laserScan.rangeMax(), laserScan.angleMin(), laserScan.angleMax(), laserScan.angleIncrement(), laserScan.localTransform());
+					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.rangeMin(), laserScan.rangeMax(), laserScan.angleMin(), laserScan.angleMax(), laserScan.angleIncrement(), laserScan.localTransform());
 				}
 				else
 				{
-					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYINormal, laserScan.localTransform());
+					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), laserScan.localTransform());
 				}
 
 			}
 			else
 			{
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, searchK, searchRadius);
-				return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYZINormal, laserScan.localTransform());
+				return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), laserScan.localTransform());
 			}
 		}
 	}
@@ -2592,17 +2592,17 @@ LaserScan computeNormals(
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals2D(cloud, searchK, searchRadius);
 				if(laserScan.angleIncrement() > 0.0f)
 				{
-					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), LaserScan::kXYNormal, laserScan.rangeMin(), laserScan.rangeMax(), laserScan.angleMin(), laserScan.angleMax(), laserScan.angleIncrement(), laserScan.localTransform());
+					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.rangeMin(), laserScan.rangeMax(), laserScan.angleMin(), laserScan.angleMax(), laserScan.angleIncrement(), laserScan.localTransform());
 				}
 				else
 				{
-					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYNormal, laserScan.localTransform());
+					return LaserScan(laserScan2dFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), laserScan.localTransform());
 				}
 			}
 			else
 			{
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, searchK, searchRadius);
-				return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), LaserScan::kXYZNormal, laserScan.localTransform());
+				return LaserScan(laserScanFromPointCloud(*cloud, *normals), laserScan.maxPoints(), laserScan.rangeMax(), laserScan.localTransform());
 			}
 		}
 	}
@@ -3561,6 +3561,55 @@ void adjustNormalsToViewPoints(
 						cloud->points[i].normal_x *= -1.0f;
 						cloud->points[i].normal_y *= -1.0f;
 						cloud->points[i].normal_z *= -1.0f;
+					}
+				}
+				else
+				{
+					UWARN("Not found camera viewpoint for point %d!?", i);
+				}
+			}
+		}
+	}
+}
+
+void adjustNormalsToViewPoints(
+		const std::map<int, Transform> & viewpoints,
+		const LaserScan & rawScan,
+		const std::vector<int> & viewpointIds,
+		LaserScan & scan)
+{
+	UDEBUG("poses=%d, rawCloud=%d, rawCameraIndices=%d, cloud=%d", (int)viewpoints.size(), (int)rawScan.size(), (int)viewpointIds.size(), (int)scan.size());
+	if(viewpoints.size() && rawScan.size() && rawScan.size() == (int)viewpointIds.size() && scan.size() && scan.hasNormals())
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr rawCloud = util3d::laserScanToPointCloud(rawScan);
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr rawTree (new pcl::search::KdTree<pcl::PointXYZ>);
+		rawTree->setInputCloud (rawCloud);
+		for(int i=0; i<scan.size(); ++i)
+		{
+			pcl::PointNormal point = util3d::laserScanToPointNormal(scan, i);
+			pcl::PointXYZ normal(point.normal_x, point.normal_y, point.normal_z);
+			if(pcl::isFinite(normal))
+			{
+				std::vector<int> indices;
+				std::vector<float> dist;
+				rawTree->nearestKSearch(pcl::PointXYZ(point.x, point.y, point.z), 1, indices, dist);
+				if(indices.size() && indices[0]>=0)
+				{
+					UASSERT_MSG(indices[0]<(int)viewpointIds.size(), uFormat("indices[0]=%d rawCameraIndices.size()=%d", indices[0], (int)viewpointIds.size()).c_str());
+					UASSERT(uContains(viewpoints, viewpointIds[indices[0]]));
+					Transform p = viewpoints.at(viewpointIds[indices[0]]);
+					pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
+					Eigen::Vector3f v = viewpoint.getVector3fMap() - point.getVector3fMap();
+
+					Eigen::Vector3f n(normal.x, normal.y, normal.z);
+
+					float result = v.dot(n);
+					if(result < 0)
+					{
+						//reverse normal
+						scan.field(i, scan.getNormalsOffset()) *= -1.0f;
+						scan.field(i, scan.getNormalsOffset()+1) *= -1.0f;
+						scan.field(i, scan.getNormalsOffset()+2) *= -1.0f;
 					}
 				}
 				else

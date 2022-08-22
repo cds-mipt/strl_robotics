@@ -271,6 +271,21 @@ Visualization Manager:
       Use rainbow: true
       Value: false
     - Alpha: 1
+      Class: rtabmap_ros/MapGraph
+      Enabled: false
+      Global loop closure: 255; 0; 0
+      Landmark: 0; 128; 0
+      Local loop closure: 255; 255; 0
+      Merged neighbor: 255; 170; 0
+      Name: MapGraph
+      Neighbor: 0; 0; 255
+      Queue Size: 10
+      Topic: /rtabmap/mapGraph
+      Unreliable: false
+      User: 255; 0; 0
+      Value: false
+      Virtual: 255; 0; 255
+    - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 2.29054856300354

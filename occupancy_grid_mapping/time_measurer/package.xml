@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>time_measurer</name>
+  <version>0.0.0</version>
+  <description>The time_measurer package</description>
+
+  <maintainer email="cds-jetson-host@todo.todo">cds-jetson-host</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>cmake</buildtool_depend>
+
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+</package>

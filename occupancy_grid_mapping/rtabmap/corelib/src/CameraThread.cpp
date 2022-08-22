@@ -49,6 +49,10 @@ namespace rtabmap
 // ownership transferred
 CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_camera(camera),
+		_odomSensor(0),
+		_odomAsGt(false),
+		_poseTimeOffset(0.0),
+		_poseScaleFactor(1.0f),
 		_mirroring(false),
 		_stereoExposureCompensation(false),
 		_colorOnly(false),
@@ -67,15 +71,95 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_bilateralFiltering(false),
 		_bilateralSigmaS(10),
 		_bilateralSigmaR(0.1),
-		_imuFilter(0)
+		_imuFilter(0),
+		_imuBaseFrameConversion(false)
 {
 	UASSERT(_camera != 0);
+}
+
+// ownership transferred
+CameraThread::CameraThread(
+		Camera * camera,
+		Camera * odomSensor,
+		const Transform & extrinsics,
+		double poseTimeOffset,
+		float poseScaleFactor,
+		bool odomAsGt,
+		const ParametersMap & parameters) :
+			_camera(camera),
+			_odomSensor(odomSensor),
+			_extrinsicsOdomToCamera(extrinsics * CameraModel::opticalRotation()),
+			_odomAsGt(odomAsGt),
+			_poseTimeOffset(poseTimeOffset),
+			_poseScaleFactor(poseScaleFactor),
+			_mirroring(false),
+			_stereoExposureCompensation(false),
+			_colorOnly(false),
+			_imageDecimation(1),
+			_stereoToDepth(false),
+			_scanFromDepth(false),
+			_scanDownsampleStep(1),
+			_scanRangeMin(0.0f),
+			_scanRangeMax(0.0f),
+			_scanVoxelSize(0.0f),
+			_scanNormalsK(0),
+			_scanNormalsRadius(0.0f),
+			_scanForceGroundNormalsUp(false),
+			_stereoDense(StereoDense::create(parameters)),
+			_distortionModel(0),
+			_bilateralFiltering(false),
+			_bilateralSigmaS(10),
+			_bilateralSigmaR(0.1),
+			_imuFilter(0),
+			_imuBaseFrameConversion(false)
+{
+	UASSERT(_camera != 0 && _odomSensor != 0 && !_extrinsicsOdomToCamera.isNull());
+	UDEBUG("_extrinsicsOdomToCamera=%s", _extrinsicsOdomToCamera.prettyPrint().c_str());
+	UDEBUG("_poseTimeOffset        =%f", _poseTimeOffset);
+	UDEBUG("_poseScaleFactor       =%f", _poseScaleFactor);
+	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
+}
+
+// ownership transferred
+CameraThread::CameraThread(
+		Camera * camera,
+		bool odomAsGt,
+		const ParametersMap & parameters) :
+			_camera(camera),
+			_odomSensor(0),
+			_odomAsGt(odomAsGt),
+			_poseTimeOffset(0.0),
+			_poseScaleFactor(1.0f),
+			_mirroring(false),
+			_stereoExposureCompensation(false),
+			_colorOnly(false),
+			_imageDecimation(1),
+			_stereoToDepth(false),
+			_scanFromDepth(false),
+			_scanDownsampleStep(1),
+			_scanRangeMin(0.0f),
+			_scanRangeMax(0.0f),
+			_scanVoxelSize(0.0f),
+			_scanNormalsK(0),
+			_scanNormalsRadius(0.0f),
+			_scanForceGroundNormalsUp(false),
+			_stereoDense(StereoDense::create(parameters)),
+			_distortionModel(0),
+			_bilateralFiltering(false),
+			_bilateralSigmaS(10),
+			_bilateralSigmaR(0.1),
+			_imuFilter(0),
+			_imuBaseFrameConversion(false)
+{
+	UASSERT(_camera != 0);
+	UDEBUG("_odomAsGt              =%s", _odomAsGt?"true":"false");
 }
 
 CameraThread::~CameraThread()
 {
 	join(true);
 	delete _camera;
+	delete _odomSensor;
 	delete _distortionModel;
 	delete _stereoDense;
 	delete _imuFilter;
@@ -117,10 +201,11 @@ void CameraThread::enableBilateralFiltering(float sigmaS, float sigmaR)
 	_bilateralSigmaR = sigmaR;
 }
 
-void CameraThread::enableIMUFiltering(int filteringStrategy, const ParametersMap & parameters)
+void CameraThread::enableIMUFiltering(int filteringStrategy, const ParametersMap & parameters, bool baseFrameConversion)
 {
 	delete _imuFilter;
 	_imuFilter = IMUFilter::create((IMUFilter::Type)filteringStrategy, parameters);
+	_imuBaseFrameConversion = baseFrameConversion;
 }
 
 void CameraThread::disableIMUFiltering()
@@ -162,6 +247,11 @@ void CameraThread::setScanParameters(
 	_scanForceGroundNormalsUp = groundNormalsUp;
 }
 
+bool CameraThread::odomProvided() const
+{
+	return _camera && (_camera->odomProvided() || (_odomSensor && _odomSensor->odomProvided()));
+}
+
 void CameraThread::mainLoopBegin()
 {
 	ULogger::registerCurrentThread("Camera");
@@ -174,10 +264,51 @@ void CameraThread::mainLoop()
 	CameraInfo info;
 	SensorData data = _camera->takeImage(&info);
 
+	if(_odomSensor)
+	{
+		Transform pose;
+		Transform poseToLeftCam;
+		cv::Mat covariance;
+		if(_odomSensor->getPose(data.stamp()+_poseTimeOffset, pose, covariance))
+		{
+			info.odomPose = pose;
+			info.odomCovariance = covariance;
+			if(_poseScaleFactor>0 && _poseScaleFactor!=1.0f)
+			{
+				info.odomPose.x() *= _poseScaleFactor;
+				info.odomPose.y() *= _poseScaleFactor;
+				info.odomPose.z() *= _poseScaleFactor;
+			}
+			// Adjust local transform of the camera based on the pose frame
+			if(!data.cameraModels().empty())
+			{
+				UASSERT(data.cameraModels().size()==1);
+				CameraModel model = data.cameraModels()[0];
+				model.setLocalTransform(_extrinsicsOdomToCamera);
+				data.setCameraModel(model);
+			}
+			else
+			{
+				StereoCameraModel model = data.stereoCameraModel();
+				model.setLocalTransform(_extrinsicsOdomToCamera);
+				data.setStereoCameraModel(model);
+			}
+		}
+		else
+		{
+			UWARN("Could not get pose at stamp %f", data.stamp());
+		}
+	}
+
+	if(_odomAsGt && !info.odomPose.isNull())
+	{
+		data.setGroundTruth(info.odomPose);
+		info.odomPose.setNull();
+	}
+
 	if(!data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
 		postUpdate(&data, &info);
-
 		info.cameraName = _camera->getSerial();
 		info.timeTotal = totalTime.ticks();
 		this->post(new CameraEvent(data, info));
@@ -470,21 +601,31 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		}
 		else
 		{
+			// Transform IMU data in base_link to correctly initialize yaw
+			IMU imu = data.imu();
+			if(_imuBaseFrameConversion)
+			{
+				UASSERT(!data.imu().localTransform().isNull());
+				imu.convertToBaseFrame();
+
+			}
 			_imuFilter->update(
-					data.imu().angularVelocity()[0],
-					data.imu().angularVelocity()[1],
-					data.imu().angularVelocity()[2],
-					data.imu().linearAcceleration()[0],
-					data.imu().linearAcceleration()[1],
-					data.imu().linearAcceleration()[2],
+					imu.angularVelocity()[0],
+					imu.angularVelocity()[1],
+					imu.angularVelocity()[2],
+					imu.linearAcceleration()[0],
+					imu.linearAcceleration()[1],
+					imu.linearAcceleration()[2],
 					data.stamp());
 			double qx,qy,qz,qw;
 			_imuFilter->getOrientation(qx,qy,qz,qw);
+
 			data.setIMU(IMU(
 					cv::Vec4d(qx,qy,qz,qw), cv::Mat::eye(3,3,CV_64FC1),
-					data.imu().angularVelocity(), data.imu().angularVelocityCovariance(),
-					data.imu().linearAcceleration(), data.imu().linearAccelerationCovariance(),
-					data.imu().localTransform()));
+					imu.angularVelocity(), imu.angularVelocityCovariance(),
+					imu.linearAcceleration(), imu.linearAccelerationCovariance(),
+					imu.localTransform()));
+
 			UDEBUG("%f %f %f %f (gyro=%f %f %f, acc=%f %f %f, %fs)",
 						data.imu().orientation()[0],
 						data.imu().orientation()[1],

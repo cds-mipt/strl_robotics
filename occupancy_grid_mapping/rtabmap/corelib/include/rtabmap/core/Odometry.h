@@ -49,11 +49,12 @@ public:
 		kTypeFovis = 2,
 		kTypeViso2 = 3,
 		kTypeDVO = 4,
-		kTypeORBSLAM2 = 5,
+		kTypeORBSLAM = 5,
 		kTypeOkvis = 6,
 		kTypeLOAM = 7,
 		kTypeMSCKF = 8,
-		kTypeVINS = 9
+		kTypeVINS = 9,
+		kTypeOpenVINS = 10
 	};
 
 public:
@@ -67,7 +68,7 @@ public:
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 	virtual Odometry::Type getType() = 0;
 	virtual bool canProcessRawImages() const {return false;}
-	virtual bool canProcessIMU() const {return false;}
+	virtual bool canProcessAsyncIMU() const {return false;}
 
 	//getters
 	const Transform & getPose() const {return _pose;}
@@ -103,7 +104,7 @@ private:
 	bool _fillInfoData;
 	float _kalmanProcessNoise;
 	float _kalmanMeasurementNoise;
-	int _imageDecimation;
+	unsigned int _imageDecimation;
 	bool _alignWithGround;
 	bool _publishRAMUsage;
 	bool _imagesAlreadyRectified;
@@ -120,6 +121,7 @@ private:
 	std::vector<ParticleFilter *> particleFilters_;
 	cv::KalmanFilter kalmanFilter_;
 	StereoCameraModel stereoModel_;
+	std::vector<CameraModel> models_;
 	std::map<double, Transform> imus_;
 
 protected:

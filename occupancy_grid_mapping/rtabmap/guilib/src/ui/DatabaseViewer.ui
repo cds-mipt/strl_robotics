@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>419</width>
+           <width>307</width>
            <height>311</height>
           </rect>
          </property>
@@ -304,7 +304,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>418</width>
+           <width>306</width>
            <height>311</height>
           </rect>
          </property>
@@ -694,6 +694,7 @@
      </property>
      <addaction name="actionRaw_format_txt"/>
      <addaction name="actionRGBD_SLAM_format_txt"/>
+     <addaction name="actionRGBD_SLAM_ID_format_txt"/>
      <addaction name="actionRGBD_SLAM_motion_capture_format_txt"/>
      <addaction name="actionKITTI_format_txt"/>
      <addaction name="actionTORO_graph"/>
@@ -1379,7 +1380,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -1541,9 +1542,9 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
-          <width>280</width>
-          <height>949</height>
+          <y>-322</y>
+          <width>518</width>
+          <height>911</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1552,10 +1553,244 @@
         <layout class="QVBoxLayout" name="verticalLayout_16">
          <item>
           <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,0">
-           <item row="10" column="1">
-            <widget class="QLabel" name="label_51">
+           <item row="7" column="0">
+            <widget class="QComboBox" name="comboBox_octomap_rendering_type">
+             <item>
+              <property name="text">
+               <string>Point Cloud</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Cube</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Volume</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QCheckBox" name="checkBox_grid_empty">
              <property name="text">
-              <string>Gain compensation radius (Constraints view)</string>
+              <string/>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="12" column="0">
+            <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize">
+             <property name="suffix">
+              <string> m</string>
+             </property>
+             <property name="decimals">
+              <number>3</number>
+             </property>
+             <property name="minimum">
+              <double>0.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>99.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.010000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLabel" name="label_octomap_empty_3">
+             <property name="text">
+              <string>Ground cell color</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="0">
+            <widget class="QSpinBox" name="spinBox_decimation">
+             <property name="prefix">
+              <string/>
+             </property>
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>16</number>
+             </property>
+             <property name="value">
+              <number>16</number>
+             </property>
+            </widget>
+           </item>
+           <item row="14" column="0">
+            <widget class="QCheckBox" name="checkBox_grid_showProbMap">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="0">
+            <widget class="QSpinBox" name="spinBox_grid_depth">
+             <property name="prefix">
+              <string/>
+             </property>
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>16</number>
+             </property>
+             <property name="value">
+              <number>16</number>
+             </property>
+            </widget>
+           </item>
+           <item row="11" column="1">
+            <widget class="QLabel" name="label_56">
+             <property name="text">
+              <string>Decimation (for images)</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="9" column="0">
+            <widget class="QCheckBox" name="checkBox_grid_regenerateFromSavedGrid">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLabel" name="label_octomap_empty_2">
+             <property name="text">
+              <string>Obstacle cell color</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="14" column="1">
+            <widget class="QLabel" name="label_59">
+             <property name="text">
+              <string>Show probabilistic occupancy grid in Graph View.</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_9">
+             <item>
+              <widget class="QToolButton" name="toolButton_groundColor">
+               <property name="text">
+                <string>...</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEdit_groundColor">
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="4" column="1">
+            <widget class="QLabel" name="label_53">
+             <property name="text">
+              <string>OctoMap</string>
+             </property>
+            </widget>
+           </item>
+           <item row="13" column="1">
+            <widget class="QLabel" name="label_57">
+             <property name="text">
+              <string>Crop radius when filtering empty space from 2d occupancy grid.</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_11">
+             <item>
+              <widget class="QToolButton" name="toolButton_obstacleColor">
+               <property name="text">
+                <string>...</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEdit_obstacleColor">
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="13" column="0">
+            <widget class="QSpinBox" name="spinBox_cropRadius">
+             <property name="suffix">
+              <string> pixels</string>
+             </property>
+             <property name="value">
+              <number>1</number>
+             </property>
+            </widget>
+           </item>
+           <item row="12" column="1">
+            <widget class="QLabel" name="label_54">
+             <property name="text">
+              <string>Voxel size (for clouds and scans)</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_12">
+             <item>
+              <widget class="QToolButton" name="toolButton_emptyColor">
+               <property name="text">
+                <string>...</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEdit_emptyColor">
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLabel" name="label_octomap_empty">
+             <property name="text">
+              <string>Show empty space</string>
              </property>
              <property name="wordWrap">
               <bool>true</bool>
@@ -1584,23 +1819,6 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="1">
-            <widget class="QLabel" name="label_53">
-             <property name="text">
-              <string>OctoMap</string>
-             </property>
-            </widget>
-           </item>
-           <item row="12" column="1">
-            <widget class="QLabel" name="label_54">
-             <property name="text">
-              <string>Voxel size (for clouds and scans)</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
            <item row="4" column="0">
             <widget class="QCheckBox" name="checkBox_octomap">
              <property name="text">
@@ -1608,137 +1826,10 @@
              </property>
             </widget>
            </item>
-           <item row="9" column="0">
-            <widget class="QCheckBox" name="checkBox_grid_regenerateFromSavedGrid">
-             <property name="text">
-              <string/>
-             </property>
-             <property name="checked">
-              <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="12" column="0">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize">
-             <property name="suffix">
-              <string> m</string>
-             </property>
-             <property name="decimals">
-              <number>3</number>
-             </property>
-             <property name="minimum">
-              <double>0.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>99.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.010000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.000000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="8" column="0">
-            <widget class="QSpinBox" name="spinBox_grid_depth">
-             <property name="prefix">
-              <string/>
-             </property>
-             <property name="minimum">
-              <number>0</number>
-             </property>
-             <property name="maximum">
-              <number>16</number>
-             </property>
-             <property name="value">
-              <number>16</number>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="0">
-            <widget class="QCheckBox" name="checkBox_grid_empty">
-             <property name="text">
-              <string/>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="7" column="1">
-            <widget class="QLabel" name="label_octomap_cubes">
-             <property name="text">
-              <string>OctoMap: Rendering type</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="7" column="0">
-            <widget class="QComboBox" name="comboBox_octomap_rendering_type">
-             <item>
-              <property name="text">
-               <string>Point Cloud</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Cube</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Volume</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-           <item row="8" column="1">
-            <widget class="QLabel" name="label_octomap_depth">
-             <property name="text">
-              <string>OctoMap: Tree depth</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
            <item row="9" column="1">
             <widget class="QLabel" name="label_55">
              <property name="text">
               <string>Local grid: regenerate from saved grid instead of sensors</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QLabel" name="label_octomap_empty">
-             <property name="text">
-              <string>Show empty space</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QLabel" name="label_octomap_empty_3">
-             <property name="text">
-              <string>Ground cell color</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QLabel" name="label_octomap_empty_2">
-             <property name="text">
-              <string>Obstacle cell color</string>
              </property>
              <property name="wordWrap">
               <bool>true</bool>
@@ -1755,103 +1846,53 @@
              </property>
             </widget>
            </item>
-           <item row="2" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_9">
-             <item>
-              <widget class="QToolButton" name="toolButton_groundColor">
-               <property name="text">
-                <string>...</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit_groundColor">
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="1" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_11">
-             <item>
-              <widget class="QToolButton" name="toolButton_obstacleColor">
-               <property name="text">
-                <string>...</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit_obstacleColor">
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="3" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_12">
-             <item>
-              <widget class="QToolButton" name="toolButton_emptyColor">
-               <property name="text">
-                <string>...</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit_emptyColor">
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="11" column="1">
-            <widget class="QLabel" name="label_56">
+           <item row="10" column="1">
+            <widget class="QLabel" name="label_51">
              <property name="text">
-              <string>Decimation (for images)</string>
+              <string>Gain compensation radius (Constraints view)</string>
              </property>
              <property name="wordWrap">
               <bool>true</bool>
              </property>
             </widget>
            </item>
-           <item row="11" column="0">
-            <widget class="QSpinBox" name="spinBox_decimation">
-             <property name="prefix">
+           <item row="8" column="1">
+            <widget class="QLabel" name="label_octomap_depth">
+             <property name="text">
+              <string>OctoMap: Tree depth</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="1">
+            <widget class="QLabel" name="label_octomap_cubes">
+             <property name="text">
+              <string>OctoMap: Rendering type</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="15" column="1">
+            <widget class="QLabel" name="label_60">
+             <property name="text">
+              <string>Create RGB-D cloud from RGB projection on scan.</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="15" column="0">
+            <widget class="QCheckBox" name="checkBox_cameraProjection">
+             <property name="text">
               <string/>
              </property>
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>16</number>
-             </property>
-             <property name="value">
-              <number>16</number>
-             </property>
-            </widget>
-           </item>
-           <item row="13" column="1">
-            <widget class="QLabel" name="label_57">
-             <property name="text">
-              <string>Crop radius when filtering empty space from 2d occupancy grid.</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="13" column="0">
-            <widget class="QSpinBox" name="spinBox_cropRadius">
-             <property name="suffix">
-              <string> pixels</string>
-             </property>
-             <property name="value">
-              <number>1</number>
+             <property name="checked">
+              <bool>false</bool>
              </property>
             </widget>
            </item>
@@ -2096,15 +2137,15 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>226</width>
-          <height>160</height>
+          <width>298</width>
+          <height>192</height>
          </rect>
         </property>
         <attribute name="label">
          <string>Detect more loop closures</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
-         <item row="3" column="1">
+         <item row="4" column="1">
           <widget class="QLabel" name="label_32">
            <property name="text">
             <string>Intra-session</string>
@@ -2133,11 +2174,11 @@
          <item row="0" column="1">
           <widget class="QLabel" name="label_29">
            <property name="text">
-            <string>Radius</string>
+            <string>Radius Max</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
+         <item row="2" column="0">
           <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_angle">
            <property name="suffix">
             <string> degrees</string>
@@ -2156,14 +2197,14 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
+         <item row="2" column="1">
           <widget class="QLabel" name="label_30">
            <property name="text">
             <string>Angle</string>
            </property>
           </widget>
          </item>
-         <item row="2" column="0">
+         <item row="3" column="0">
           <widget class="QSpinBox" name="spinBox_detectMore_iterations">
            <property name="minimum">
             <number>1</number>
@@ -2176,14 +2217,14 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
+         <item row="3" column="1">
           <widget class="QLabel" name="label_31">
            <property name="text">
             <string>Iterations</string>
            </property>
           </widget>
          </item>
-         <item row="5" column="0">
+         <item row="6" column="0">
           <spacer name="verticalSpacer_5">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
@@ -2196,24 +2237,50 @@
            </property>
           </spacer>
          </item>
-         <item row="4" column="1">
+         <item row="5" column="1">
           <widget class="QLabel" name="label_34">
            <property name="text">
             <string>Inter-session</string>
            </property>
           </widget>
          </item>
-         <item row="3" column="0">
+         <item row="4" column="0">
           <widget class="QCheckBox" name="checkBox_detectMore_intraSession">
            <property name="text">
             <string/>
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
+         <item row="5" column="0">
           <widget class="QCheckBox" name="checkBox_detectMore_interSession">
            <property name="text">
             <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="label_36">
+           <property name="text">
+            <string>Radius Min</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_detectMore_radiusMin">
+           <property name="suffix">
+            <string> m</string>
+           </property>
+           <property name="decimals">
+            <number>2</number>
+           </property>
+           <property name="maximum">
+            <double>10.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
+           </property>
+           <property name="value">
+            <double>0.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -2941,6 +3008,11 @@
   <action name="actionRegenerate_optimized_2D_map">
    <property name="text">
     <string>Regenerate optimized 2D map...</string>
+   </property>
+  </action>
+  <action name="actionRGBD_SLAM_ID_format_txt">
+   <property name="text">
+    <string>RGBD-SLAM ID format (*.txt)</string>
    </property>
   </action>
  </widget>

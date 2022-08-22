@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
 #include <opencv2/core/core.hpp>
+#include <rtabmap/core/ProgressState.h>
 #include <map>
 #include <list>
 
@@ -196,7 +197,8 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImages(
 		float maxDepth,
 		float minDepth);
 
-LaserScan RTABMAP_EXP laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filterNaNs = true, bool is2D = false, const Transform & transform = Transform());
+template<typename PointCloud2T>
+LaserScan laserScanFromPointCloud(const PointCloud2T & cloud, bool filterNaNs = true, bool is2D = false, const Transform & transform = Transform());
 // return CV_32FC3  (x,y,z)
 LaserScan RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
 LaserScan RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform(), bool filterNaNs = true);
@@ -300,6 +302,33 @@ void RTABMAP_EXP fillProjectedCloudHoles(
 		bool verticalDirection,
 		bool fillToBorder);
 
+/**
+ * For each point, return pixel of the best camera (NodeID->CameraIndex)
+ * looking at it based on the policy and parameters
+ */
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_EXP projectCloudToCameras (
+		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance = 0.0f,
+		float maxAngle = 0.0f,
+		const std::vector<float> & roiRatios = std::vector<float>(),
+		bool distanceToCamPolicy = false,
+		const ProgressState * state = 0);
+/**
+ * For each point, return pixel of the best camera (NodeID->CameraIndex)
+ * looking at it based on the policy and parameters
+ */
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > RTABMAP_EXP projectCloudToCameras (
+		const pcl::PointCloud<pcl::PointXYZINormal> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance = 0.0f,
+		float maxAngle = 0.0f,
+		const std::vector<float> & roiRatios = std::vector<float>(),
+		bool distanceToCamPolicy = false,
+		const ProgressState * state = 0);
+
 bool RTABMAP_EXP isFinite(const cv::Point3f & pt);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP concatenateClouds(
@@ -362,5 +391,7 @@ RTABMAP_DEPRECATED(pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadCloud(
 
 } // namespace util3d
 } // namespace rtabmap
+
+#include "rtabmap/core/impl/util3d.hpp"
 
 #endif /* UTIL3D_H_ */

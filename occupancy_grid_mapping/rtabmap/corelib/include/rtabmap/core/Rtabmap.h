@@ -177,7 +177,7 @@ public:
 	void setWorkingDirectory(std::string path);
 	void rejectLastLoopClosure();
 	void deleteLastLocation();
-	void setOptimizedPoses(const std::map<int, Transform> & poses);
+	void setOptimizedPoses(const std::map<int, Transform> & poses, const std::multimap<int, Link> & constraints);
 	Signature getSignatureCopy(int id, bool images, bool scan, bool userData, bool occupancyGrid, bool withWords, bool withGlobalDescriptors) const;
 	RTABMAP_DEPRECATED(
 		void get3DMap(std::map<int, Signature> & signatures,
@@ -199,12 +199,13 @@ public:
 	std::map<int, Transform> getNodesInRadius(const Transform & pose, float radius); // If radius=0, RGBD/LocalRadius is used. Can return landmarks.
 	std::map<int, Transform> getNodesInRadius(int nodeId, float radius); // If nodeId==0, return poses around latest node. If radius=0, RGBD/LocalRadius is used. Can return landmarks and use landmark id (negative) as request.
 	int detectMoreLoopClosures(
-			float clusterRadius = 0.5f,
+			float clusterRadiusMax = 0.5f,
 			float clusterAngle = M_PI/6.0f,
 			int iterations = 1,
 			bool intraSession = true,
 			bool interSession = true,
-			const ProgressState * state = 0);
+			const ProgressState * state = 0,
+			float clusterRadiusMin = 0.0f);
 	int refineLinks();
 	bool addLink(const Link & link);
 	cv::Mat getInformation(const cv::Mat & covariance) const;
@@ -247,6 +248,8 @@ private:
 	void updateGoalIndex();
 	bool computePath(int targetNode, std::map<int, Transform> nodes, const std::multimap<int, rtabmap::Link> & constraints);
 
+	void createGlobalScanMap();
+
 	void setupLogFiles(bool overwrite = false);
 	void flushStatisticLogs();
 
@@ -281,6 +284,7 @@ private:
 	bool _proximityByTime; // false по умолчанию
 	bool _proximityBySpace;
 	bool _scanMatchingIdsSavedInLinks;
+	bool _loopClosureIdentityGuess;
 	float _localRadius;
 	float _localImmunizationRatio;
 	int _proximityMaxGraphDepth;
@@ -300,10 +304,11 @@ private:
 	int _pathStuckIterations;
 	float _pathLinearVelocity;
 	float _pathAngularVelocity;
-	bool _savedLocalizationIgnored;
+	bool _restartAtOrigin;
 	bool _loopCovLimited;
 	bool _loopGPS;
 	int _maxOdomCacheSize;
+	bool _createGlobalScanMap;
 
 	std::pair<int, float> _loopClosureHypothesis;
 	std::pair<int, float> _highestHypothesis;
@@ -339,6 +344,8 @@ private:
 	int _lastLocalizationNodeId; // for localization mode
 	std::map<int, std::pair<cv::Point3d, Transform> > _gpsGeocentricCache;
 	bool _currentSessionHasGPS;
+	LaserScan _globalScanMap;
+	std::map<int, Transform> _globalScanMapPoses;
 	std::map<int, Transform> _odomCachePoses;       // used in localization mode to reject loop closures
 	std::multimap<int, Link> _odomCacheConstraints; // used in localization mode to reject loop closures
 	std::map<int, Transform> _odomCacheAddLink; // used in localization mode when adding external link

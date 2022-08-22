@@ -81,7 +81,7 @@ public:
 
 	virtual ~CameraModel() {}
 
-	void initRectificationMap();
+	bool initRectificationMap();
 	bool isRectificationMapInitialized() const {return !mapX_.empty() && !mapY_.empty();}
 
 	bool isValidForProjection() const {return fx()>0.0 && fy()>0.0 && cx()>0.0 && cy()>0.0;}
@@ -124,6 +124,7 @@ public:
 	double fovY() const; // in radians
 	double horizontalFOV() const; // in degrees
 	double verticalFOV() const;   // in degrees
+	bool isFisheye() const {return D_.cols == 6;}
 
 	bool load(const std::string & filePath);
 	bool load(const std::string & directory, const std::string & cameraName);

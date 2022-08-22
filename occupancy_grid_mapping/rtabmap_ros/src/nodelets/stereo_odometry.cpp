@@ -168,13 +168,15 @@ private:
 		callbackCalled();
 		if(!this->isPaused())
 		{
-			if(!(imageRectLeft->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
+			if(!(imageRectLeft->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) ==0 ||
+				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::MONO16) ==0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::RGB8) == 0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::BGRA8) == 0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::RGBA8) == 0) ||
-				!(imageRectRight->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
+				!(imageRectRight->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) ==0 ||
+				  imageRectRight->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
 				  imageRectRight->encoding.compare(sensor_msgs::image_encodings::MONO16) ==0 ||
 				  imageRectRight->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0 ||
 				  imageRectRight->encoding.compare(sensor_msgs::image_encodings::RGB8) == 0 ||
@@ -268,7 +270,9 @@ private:
 						imageRectLeft->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1)==0 ||
 						imageRectLeft->encoding.compare(sensor_msgs::image_encodings::MONO8)==0?"":
 							keepColor_ && imageRectLeft->encoding.compare(sensor_msgs::image_encodings::MONO16)!=0?"bgr8":"mono8");
-				cv_bridge::CvImagePtr ptrImageRight = cv_bridge::toCvCopy(imageRectRight, "mono8");
+				cv_bridge::CvImagePtr ptrImageRight = cv_bridge::toCvCopy(imageRectRight,
+						imageRectRight->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1)==0 ||
+						imageRectRight->encoding.compare(sensor_msgs::image_encodings::MONO8)==0?"":"mono8");
 
 				UTimer stepTimer;
 				//
@@ -280,7 +284,10 @@ private:
 						0,
 						rtabmap_ros::timestampFromROS(stamp));
 
-				this->processData(data, stamp, imageRectLeft->header.frame_id);
+				std_msgs::Header header;
+				header.stamp = stamp;
+				header.frame_id = imageRectLeft->header.frame_id;
+				this->processData(data, header);
 			}
 			else
 			{
@@ -298,13 +305,15 @@ private:
 			cv_bridge::CvImageConstPtr imageRectLeft, imageRectRight;
 			rtabmap_ros::toCvShare(image, imageRectLeft, imageRectRight);
 
-			if(!(imageRectLeft->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
+			if(!(imageRectLeft->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) ==0 ||
+				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::MONO16) ==0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::RGB8) == 0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::BGRA8) == 0 ||
 				 imageRectLeft->encoding.compare(sensor_msgs::image_encodings::RGBA8) == 0) ||
-				!(imageRectRight->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
+				!(imageRectRight->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) ==0 ||
+				  imageRectRight->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
 				  imageRectRight->encoding.compare(sensor_msgs::image_encodings::MONO16) ==0 ||
 				  imageRectRight->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0 ||
 				  imageRectRight->encoding.compare(sensor_msgs::image_encodings::RGB8) == 0 ||
@@ -410,7 +419,12 @@ private:
 						ptrImageLeft = cv_bridge::cvtColor(imageRectLeft, "mono8");
 					}
 				}
-				cv_bridge::CvImagePtr ptrImageRight = cv_bridge::cvtColor(imageRectRight, "mono8");
+				cv_bridge::CvImageConstPtr ptrImageRight = imageRectRight;
+				if(imageRectLeft->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) !=0 &&
+				   imageRectLeft->encoding.compare(sensor_msgs::image_encodings::MONO8) != 0)
+				{
+					ptrImageRight = cv_bridge::cvtColor(imageRectRight, "mono8");
+				}
 
 				UTimer stepTimer;
 				//
@@ -422,7 +436,10 @@ private:
 						0,
 						rtabmap_ros::timestampFromROS(stamp));
 
-				this->processData(data, stamp, image->header.frame_id);
+				std_msgs::Header header;
+				header.stamp = stamp;
+				header.frame_id = image->header.frame_id;
+				this->processData(data, header);
 			}
 			else
 			{

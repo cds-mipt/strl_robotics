@@ -1,0 +1,62 @@
+<launch>
+
+    <!-- Arguments -->
+    <arg name="map_path" default=""/>
+    <arg name="load_map" default="false"/>
+    <arg name="save_map" default="false"/>
+    <arg name="save_assembled_map" default="false"/>
+
+    <arg name="min_semantic_range" default="0"/>
+    <arg name="max_semantic_range" default="0"/>
+
+    <!-- Occupanyc grid builder -->
+    <node pkg="rtabmap_ros" type="occupancy_grid_builder" name="occupancy_grid_builder" output="screen" args="">
+        <!-- Топик, куда будет публиковаться карта -->
+        <remap from="grid_map" to="/grid_map"/>
+
+        <!-- remap топиков для чтения данных -->
+        <remap from="odom" to="/husky_velocity_controller/odom"/>
+        <remap from="scan_cloud" to="/velodyne_points"/>
+        <remap from="rgb/image" to="/zed_node/left/image_rect_color"/>
+        <remap from="rgb/camera_info" to="/zed_node/left/camera_info"/>
+        <param name="rgb/image_transport" type="string" value="compressed"/>
+        <remap from="depth/image" to="/zed_node/depth/depth_registered"/>
+
+        <!-- Параметры синхронизации сообщений -->
+        <param name="approx_sync" value="true"/>
+        <param name="queue_size" value="10"/>
+
+        <!-- Данные, на которые подписываться -->
+        <param name="subscribe_odom" value="true"/>
+        <param name="subscribe_rgb" value="false"/>
+        <param name="subscribe_stereo" value="false"/>
+        <param name="subscribe_depth" value="false"/>
+        <param name="subscribe_rgbd" value="false"/>
+        <param name="subscribe_scan" value="false"/>
+        <param name="subscribe_scan_cloud" value="true"/>
+
+        <!-- Загрузка / сохранение карты -->
+        <param name="map_path" value="$(arg map_path)"/>
+        <param name="load_map" value="$(arg load_map)"/>
+        <param name="save_map" value="$(arg save_map)"/>
+        <param name="save_assembled_map" value="$(arg save_assembled_map)"/>
+
+        <param name="min_semantic_range" value="$(arg min_semantic_range)"/>
+        <param name="max_semantic_range" value="$(arg max_semantic_range)"/>
+
+        <!-- Параметры -->
+        <param name="Grid/CellSize" value="0.10"/>
+        <param name="Grid/RayTracing" value="true"/>
+        <param name="Grid/FromDepth" value="false"/>
+        <param name="Grid/RangeMin" value="0"/>
+        <param name="Grid/RangeMax" value="0"/>
+        <param name="Grid/MaxObstacleHeight" value="1.5"/>
+        <param name="Grid/MaxGroundHeight" value="0.1"/>
+        <param name="Grid/3D" value="false"/>
+
+        <param name="Grid/ScanDecimation" value="3"/>
+        <param name="Grid/NormalsSegmentation" value="false"/>
+    </node>
+
+</launch>
+

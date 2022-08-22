@@ -331,7 +331,6 @@ private:
 		int depthHeight = depthImages[0]->image.rows;
 
 		UASSERT_MSG(
-			imageWidth % depthWidth == 0 && imageHeight % depthHeight == 0 &&
 			imageWidth/depthWidth == imageHeight/depthHeight,
 			uFormat("rgb=%dx%d depth=%dx%d", imageWidth, imageHeight, depthWidth, depthHeight).c_str());
 
@@ -447,7 +446,10 @@ private:
 				0,
 				rtabmap_ros::timestampFromROS(higherStamp));
 
-		this->processData(data, higherStamp, rgbImages.size()==1?rgbImages[0]->header.frame_id:"");
+		std_msgs::Header header;
+		header.stamp = higherStamp;
+		header.frame_id = rgbImages.size()==1?rgbImages[0]->header.frame_id:"";
+		this->processData(data, header);
 	}
 
 	void callback(

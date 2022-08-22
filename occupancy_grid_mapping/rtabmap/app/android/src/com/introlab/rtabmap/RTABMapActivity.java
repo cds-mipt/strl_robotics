@@ -104,7 +104,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 	// Tag for debug logging.
 	public static final String TAG = RTABMapActivity.class.getSimpleName();
-	public static boolean DISABLE_LOG = true;
+	public static boolean DISABLE_LOG = false;
 
 	// The minimum Tango Core version required from this application.
 	private static final int  MIN_TANGO_CORE_VERSION = 9377;
@@ -1075,6 +1075,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 
 		setAndroidOrientation();
 
+		updateCameraDriverSettings();
 		updatePreferences();
 
 		if(mState == State.STATE_MAPPING || mState == State.STATE_CAMERA)
@@ -1235,7 +1236,10 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 							if(cameraStartSucess && mCameraDriver == 3)
 							{
 								synchronized (this) {
-									mArCoreCamera = new ARCoreSharedCamera(getActivity());
+									SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+									String arCoreLocalizationFiltering = sharedPref.getString(getString(R.string.pref_key_arcore_localization_filtering_speed), getString(R.string.pref_default_arcore_localization_filtering_speed));
+									mArCoreCamera = new ARCoreSharedCamera(getActivity(), Float.parseFloat(arCoreLocalizationFiltering));
+									mArCoreCamera.setToast(mToast);
 									mProgressDialog.setTitle("");
 									mProgressDialog.setMessage(message);
 									mProgressDialog.show();

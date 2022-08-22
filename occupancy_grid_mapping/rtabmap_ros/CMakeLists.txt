@@ -19,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
              cv_bridge roscpp rospy sensor_msgs std_msgs std_srvs nav_msgs geometry_msgs visualization_msgs
              image_transport tf tf_conversions tf2_ros eigen_conversions laser_geometry pcl_conversions 
              pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs
-             genmsg stereo_msgs move_base_msgs image_geometry pluginlib
+             genmsg stereo_msgs move_base_msgs image_geometry pluginlib colored_occupancy_grid
 )
 
 # Optional components
@@ -31,8 +31,8 @@ find_package(find_object_2d)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(RTABMap 0.20.9 REQUIRED)
-
+find_package(RTABMap 0.20.13 REQUIRED)
+find_package(time_measurer REQUIRED)
 find_package(OpenCV REQUIRED)
 
 IF(RTABMAP_GUI)
@@ -103,6 +103,7 @@ add_message_files(
    Point3f.msg
    Goal.msg
    RGBDImage.msg
+   RGBDImages.msg
    UserData.msg
    GPS.msg
    Path.msg
@@ -123,6 +124,7 @@ add_message_files(
    AddLink.srv
    GetNodeData.srv
    GetNodesInRadius.srv
+   LoadDatabase.srv
  )
 
 ## Generate added messages and services with any dependencies listed here
@@ -131,6 +133,7 @@ generate_messages(
    std_msgs
    geometry_msgs
    sensor_msgs
+   nav_msgs
 )
 
 #add dynamic reconfigure api
@@ -183,6 +186,7 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${time_measurer_INCLUDE_DIRS}
 )
 
 # libraries
@@ -191,6 +195,7 @@ SET(Libraries
    ${PCL_LIBRARIES}
    ${catkin_LIBRARIES}
    ${RTABMap_LIBRARIES}
+   ${time_measurer_LIBRARIES}
 )
  
 SET(rtabmap_sync_lib_src
@@ -199,6 +204,7 @@ SET(rtabmap_sync_lib_src
    src/impl/CommonDataSubscriberStereo.cpp
    src/impl/CommonDataSubscriberRGB.cpp
    src/impl/CommonDataSubscriberRGBD.cpp
+   src/impl/CommonDataSubscriberRGBDX.cpp
    src/impl/CommonDataSubscriberScan.cpp
    src/impl/CommonDataSubscriberOdom.cpp
    src/CoreWrapper.cpp # we put CoreWrapper here instead of plugins lib to avoid long compilation time on plugins lib
@@ -239,6 +245,7 @@ SET(rtabmap_plugins_lib_src
    src/nodelets/point_cloud_assembler.cpp
    src/nodelets/undistort_depth.cpp
    src/nodelets/imu_to_tf.cpp
+   src/nodelets/rgbdx_sync.cpp
 )
 
 IF(${cv_bridge_VERSION_MAJOR} GREATER 1 OR ${cv_bridge_VERSION_MINOR} GREATER 10)
@@ -279,6 +286,9 @@ ENDIF(apriltag_ros_FOUND)
 add_library(rtabmap_sync
    ${rtabmap_sync_lib_src}
 )
+add_library(occupancy_grid_builder_lib
+   src/OccupancyGridBuilderWrapper.cpp
+)
 add_library(rtabmap_ros
    ${rtabmap_ros_lib_src}
 )
@@ -288,6 +298,9 @@ add_library(rtabmap_plugins
 
 target_link_libraries(rtabmap_sync
   rtabmap_ros
+)
+target_link_libraries(occupancy_grid_builder_lib
+   rtabmap_ros rtabmap_sync
 )
 target_link_libraries(rtabmap_ros
   ${Libraries}
@@ -300,6 +313,9 @@ add_dependencies(rtabmap_plugins ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 add_executable(rtabmap src/CoreNode.cpp)
 target_link_libraries(rtabmap ${Libraries})
+
+add_executable(occupancy_grid_builder src/OccupancyGridBuilderNode.cpp)
+target_link_libraries(occupancy_grid_builder occupancy_grid_builder_lib)
 
 add_executable(rtabmap_rgbd_odometry src/RGBDOdometryNode.cpp)
 target_link_libraries(rtabmap_rgbd_odometry ${Libraries})
@@ -320,6 +336,10 @@ set_target_properties(rtabmap_icp_odometry PROPERTIES OUTPUT_NAME "icp_odometry"
 add_executable(rtabmap_rgbd_sync src/RGBDSyncNode.cpp)
 target_link_libraries(rtabmap_rgbd_sync ${Libraries})
 set_target_properties(rtabmap_rgbd_sync PROPERTIES OUTPUT_NAME "rgbd_sync")
+
+add_executable(rtabmap_rgbdx_sync src/RGBDXSyncNode.cpp)
+target_link_libraries(rtabmap_rgbdx_sync ${Libraries})
+set_target_properties(rtabmap_rgbdx_sync PROPERTIES OUTPUT_NAME "rgbdx_sync")
 
 add_executable(rtabmap_stereo_sync src/StereoSyncNode.cpp)
 target_link_libraries(rtabmap_stereo_sync ${Libraries})
@@ -554,6 +574,7 @@ install(TARGETS
    rtabmap_point_cloud_assembler
    rtabmap_camera
    rtabmap_rgbd_sync
+   rtabmap_rgbdx_sync
    rtabmap_rgbd_relay
    rtabmap_wifi_signal_sub
    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

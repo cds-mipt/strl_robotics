@@ -43,36 +43,28 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui = new Ui_aboutDialog();
 	_ui->setupUi(this);
 	QString version = Parameters::getVersion().c_str();
-#if DEMO_BUILD
-	version.append(" [DEMO]");
-#endif
 	QString cv_version = CV_VERSION;
 #if CV_MAJOR_VERSION < 3
   #ifdef RTABMAP_NONFREE
-	cv_version.append(" [With nonfree]");
-	_ui->label_opencv_license->setText("Not Commercial");
+	_ui->label_opencv_license->setText("Not Commercial [With nonfree module]");
   #else
-	cv_version.append(" [Without nonfree]");
-	_ui->label_opencv_license->setText("BSD");
+	_ui->label_opencv_license->setText("BSD [Without nonfree module]");
   #endif
 #elif defined(HAVE_OPENCV_XFEATURES2D)
   #ifdef RTABMAP_NONFREE
-	cv_version.append(" [With xfeatures2d, nonfree]");
-	_ui->label_opencv_license->setText("Not Commercial");
+	_ui->label_opencv_license->setText("Not Commercial [With xfeatures2d and nonfree modules]");
   #else
-	cv_version.append(" [With xfeatures2d]");
     #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION<5)
-	  _ui->label_opencv_license->setText("BSD");
+	  _ui->label_opencv_license->setText("BSD [With xfeatures2d module]");
     #else
-	  _ui->label_opencv_license->setText("Apache 3");
+	  _ui->label_opencv_license->setText("Apache 3 [With xfeatures2d module]");
     #endif
   #endif
 #else
-	cv_version.append(" [Without xfeatures2d and nonfree]");
   #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION<5)
-	_ui->label_opencv_license->setText("BSD");
+	_ui->label_opencv_license->setText("BSD [Without xfeatures2d and nonfree modules]");
   #else
-	_ui->label_opencv_license->setText("Apache 3");
+	_ui->label_opencv_license->setText("Apache 3 [Without xfeatures2d and nonfree modules]");
   #endif
 #endif
 	_ui->label_version->setText(version);
@@ -149,9 +141,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_dc1394_license->setEnabled(CameraStereoDC1394::available());
 	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
 	_ui->label_zed->setText(CameraStereoZed::available()?"Yes":"No");
+	_ui->label_zedOC->setText(CameraStereoZedOC::available()?"Yes":"No");
+	_ui->label_zedOC_license->setEnabled(CameraStereoZedOC::available());
 	_ui->label_k4w2->setText(CameraK4W2::available() ? "Yes" : "No");
 	_ui->label_k4a->setText(CameraK4A::available() ? "Yes" : "No");
 	_ui->label_mynteye->setText(CameraMyntEye::available() ? "Yes" : "No");
+	_ui->label_depthai->setText(CameraDepthAI::available() ? "Yes" : "No");
+	_ui->label_depthai_license->setEnabled(CameraDepthAI::available());
 
 	_ui->label_toro->setText(Optimizer::isAvailable(Optimizer::kTypeTORO)?"Yes":"No");
 	_ui->label_toro_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeTORO)?true:false);
@@ -170,6 +166,14 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #else
 	_ui->label_libpointmatcher->setText("No");
 	_ui->label_libpointmatcher_license->setEnabled(false);
+#endif
+
+#ifdef RTABMAP_CCCORELIB
+	_ui->label_cccorelib->setText("Yes");
+	_ui->label_cccorelib_license->setEnabled(true);
+#else
+	_ui->label_cccorelib->setText("No");
+	_ui->label_cccorelib_license->setEnabled(false);
 #endif
 
 #ifdef RTABMAP_FOVIS
@@ -193,12 +197,17 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_dvo->setText("No");
 	_ui->label_dvo_license->setEnabled(false);
 #endif
-#ifdef RTABMAP_ORB_SLAM2
-	_ui->label_orbslam2->setText("Yes");
-	_ui->label_orbslam2_license->setEnabled(true);
+#ifdef RTABMAP_ORB_SLAM
+#if RTABMAP_ORB_SLAM == 3
+	_ui->label_orbslam_title->setText("With ORB SLAM3 :");
+#elif RTABMAP_ORB_SLAM == 2
+	_ui->label_orbslam_title->setText("With ORB SLAM2 :");
+#endif
+	_ui->label_orbslam->setText("Yes");
+	_ui->label_orbslam_license->setEnabled(true);
 #else
-	_ui->label_orbslam2->setText("No");
-	_ui->label_orbslam2_license->setEnabled(false);
+	_ui->label_orbslam->setText("No");
+	_ui->label_orbslam_license->setEnabled(false);
 #endif
 
 #ifdef RTABMAP_OKVIS
@@ -223,6 +232,22 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #else
 	_ui->label_msckf->setText("No");
 	_ui->label_msckf_license->setEnabled(false);
+#endif
+
+#ifdef RTABMAP_VINS
+	_ui->label_vins_fusion->setText("Yes");
+	_ui->label_vins_fusion_license->setEnabled(true);
+#else
+	_ui->label_vins_fusion->setText("No");
+	_ui->label_vins_fusion_license->setEnabled(false);
+#endif
+
+#ifdef RTABMAP_OPENVINS
+	_ui->label_openvins->setText("Yes");
+	_ui->label_openvins_license->setEnabled(true);
+#else
+	_ui->label_openvins->setText("No");
+	_ui->label_openvins_license->setEnabled(false);
 #endif
 
 }

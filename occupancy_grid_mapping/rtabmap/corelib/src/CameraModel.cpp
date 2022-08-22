@@ -152,7 +152,7 @@ CameraModel::CameraModel(
 	K_.at<double>(1,2) = cy;
 }
 
-void CameraModel::initRectificationMap()
+bool CameraModel::initRectificationMap()
 {
 	UASSERT(imageSize_.height > 0 && imageSize_.width > 0);
 	UASSERT(D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 6 || D_.cols == 8));
@@ -182,6 +182,7 @@ void CameraModel::initRectificationMap()
 		// RadialTangential
 		cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
 	}
+	return isRectificationMapInitialized();
 }
 
 void CameraModel::setImageSize(const cv::Size & size)
@@ -233,7 +234,7 @@ bool CameraModel::load(const std::string & filePath)
 			n = fs["camera_name"];
 			if(n.type() != cv::FileNode::NONE)
 			{
-				name_ = (int)n;
+				name_ = (std::string)n;
 			}
 			else
 			{
@@ -366,7 +367,11 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 
 bool CameraModel::save(const std::string & directory) const
 {
-	std::string filePath = directory+"/"+name_+".yaml";
+	if(name_.empty())
+	{
+		UWARN("Camera name is empty, will use general \"camera\" as name.");
+	}
+	std::string filePath = directory+"/"+(name_.empty()?"camera":name_)+".yaml";
 	if(!filePath.empty() && (!K_.empty() || !D_.empty() || !R_.empty() || !P_.empty()))
 	{
 		UINFO("Saving calibration to file \"%s\"", filePath.c_str());
@@ -766,7 +771,7 @@ bool CameraModel::inFrame(int u, int v) const
 
 std::ostream& operator<<(std::ostream& os, const CameraModel& model)
 {
-	os << "Name: " << model.name() << std::endl
+	os << "Name: " << model.name().c_str() << std::endl
 	   << "Size: " << model.imageWidth() << "x" << model.imageHeight() << std::endl
 	   << "K= " << model.K_raw() << std::endl
 	   << "D= " << model.D_raw() << std::endl

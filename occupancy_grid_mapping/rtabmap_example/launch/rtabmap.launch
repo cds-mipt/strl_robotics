@@ -1,9 +1,5 @@
 <launch>
 
-    <!-- Static transform from left camera to LIDAR -->
-    <node pkg="tf2_ros" type="static_transform_publisher" name="zed_left_camera_optical_frame_to_velodyne"
-        args="5.214154202176700392e-02 -1.846812214940576902e-01 -4.561479952008089256e-02 -3.046857448372968236e+00 -1.631619169438448314e+00 -1.657808369943630566e+00 zed_left_camera_optical_frame velodyne"/>
-
     <!-- Arguments -->
     
     <!-- load_db - if load database -->
@@ -15,16 +11,23 @@
     <arg name="db_path" default="~/.ros/rtabmap.db"/>
     
     <!-- odom - odometry to use -->
-    <arg name="odom" default="openvslam"/>
-    <!-- Custom node to convert OpenVSLAM odom from camera frame to base_link and publish dynamic transform from odom to base_link -->
-    <node if="$(eval odom == 'openvslam')" pkg="rtabmap_example" type="openvslam_odom_to_base_link.py" name="openvslam_odom_to_base_link" output="screen"/>
-    <arg if="$(eval odom == 'openvslam')" name="odom_topic" value="/OpenVSLAM/odom_base_link"/>
-    <arg if="$(eval odom == 'rtabmap')" name="odom_topic" value="odom"/>
-    
-    <!-- local - localization -->
-    <arg name="local" default="false"/>
+    <arg name="odom" default="fused"/>
+    <node if="$(eval odom == 'fused')" pkg="ros_utils" type="publish_odometry_transforms.py" name="publish_odometry_transforms" output="screen"
+        args="--odom-topic /fused_odom"/>
 
-    <!-- Rtabmap mapping -->
+    <arg if="$(eval odom == 'rtabmap')" name="odom_topic" value="odom"/>
+    <arg if="$(eval odom == 'fused')" name="odom_topic" value="/fused_odom"/>
+    <arg if="$(eval odom == 'lol')" name="odom_topic" value="/lol_odom"/>
+    
+    <!-- local - localization mode, otherwise mapping mode -->
+    <arg name="local" default="false"/>
+    
+    <!-- data to read -->
+    <arg name="rgb" default="true"/>
+    <arg name="depth" default="true"/>
+    <arg name="stereo" default="false"/>
+
+    <!-- Rtabmap -->
     <node pkg="rtabmap_ros" type="rtabmap" name="rtabmap" ns="rtabmap" output="screen" args="$(arg rtabmap_args)">
         <!-- remap топиков для чтения данных -->
         <remap from="odom" to="$(arg odom_topic)"/>
@@ -38,11 +41,13 @@
         
         <remap from="rgb/image" to="/zed_node/left/image_rect_color"/>
         <remap from="rgb/camera_info" to="/zed_node/left/camera_info"/>
+        <param name="rgb/image_transport" type="string" value="compressed"/>
         <remap from="depth/image" to="/zed_node/depth/depth_registered"/>
 
         <!-- Данные, на которые подписывается rtabmap -->
-        <param name="subscribe_stereo" value="false"/>
-        <param name="subscribe_depth" value="true"/>
+        <param name="subscribe_rgb" value="$(arg rgb)"/>
+        <param name="subscribe_stereo" value="$(arg stereo)"/>
+        <param name="subscribe_depth" value="$(arg depth)"/>
         <param name="subscribe_rgbd" value="false"/>
         <param name="subscribe_scan" value="false"/>
         <param name="subscribe_scan_cloud" value="true"/>
@@ -59,7 +64,7 @@
         <param unless="$(arg local)" name="Mem/IncrementalMemory" value="true"/>
         
         <!-- Параметры rtabmap -->
-        <param name="Rtabmap/DetectionRate" value="100"/>
+        <param name="Rtabmap/DetectionRate" value="10"/>
         <param name="Grid/RayTracing" value="true"/>
         <param name="Grid/FromDepth" value="false"/>
         <param name="Grid/MaxObstacleHeight" value="1.5"/>

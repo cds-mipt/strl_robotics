@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/common/transforms.h>
+#include <pcl/common/common.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/types_c.h>
 
@@ -1261,287 +1262,6 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImages(
 		}
 	}
 	return scan;
-}
-
-LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud, bool filterNaNs, bool is2D, const Transform & transform)
-{
-	if(cloud.data.empty())
-	{
-		return LaserScan();
-	}
-	//determine the output type
-	int fieldStates[8] = {0}; // x,y,z,normal_x,normal_y,normal_z,rgb,intensity
-#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-	std::uint32_t fieldOffsets[8] = {0};
-#else
-	pcl::uint32_t fieldOffsets[8] = {0};
-#endif
-	for(unsigned int i=0; i<cloud.fields.size(); ++i)
-	{
-		if(cloud.fields[i].name.compare("x") == 0)
-		{
-			fieldStates[0] = 1;
-			fieldOffsets[0] = cloud.fields[i].offset;
-		}
-		else if(cloud.fields[i].name.compare("y") == 0)
-		{
-			fieldStates[1] = 1;
-			fieldOffsets[1] = cloud.fields[i].offset;
-		}
-		else if(cloud.fields[i].name.compare("z") == 0 && !is2D)
-		{
-			fieldStates[2] = 1;
-			fieldOffsets[2] = cloud.fields[i].offset;
-		}
-		else if(cloud.fields[i].name.compare("normal_x") == 0)
-		{
-			fieldStates[3] = 1;
-			fieldOffsets[3] = cloud.fields[i].offset;
-		}
-		else if(cloud.fields[i].name.compare("normal_y") == 0)
-		{
-			fieldStates[4] = 1;
-			fieldOffsets[4] = cloud.fields[i].offset;
-		}
-		else if(cloud.fields[i].name.compare("normal_z") == 0)
-		{
-			fieldStates[5] = 1;
-			fieldOffsets[5] = cloud.fields[i].offset;
-		}
-		else if(cloud.fields[i].name.compare("rgb") == 0 || cloud.fields[i].name.compare("rgba") == 0)
-		{
-			fieldStates[6] = 1;
-			fieldOffsets[6] = cloud.fields[i].offset;
-		}
-		else if(cloud.fields[i].name.compare("intensity") == 0)
-		{
-			fieldStates[7] = 1;
-			fieldOffsets[7] = cloud.fields[i].offset;
-		}
-		else
-		{
-			UDEBUG("Ignoring \"%s\" field", cloud.fields[i].name.c_str());
-		}
-	}
-	if(fieldStates[0]==0 || fieldStates[1]==0)
-	{
-		//should have at least x and y set
-		UERROR("Cloud has not corresponding fields to laser scan!");
-		return LaserScan();
-	}
-
-	bool hasNormals = fieldStates[3] || fieldStates[4] || fieldStates[5];
-	bool hasIntensity = fieldStates[7];
-	bool hasRGB = !hasIntensity&&fieldStates[6];
-	bool is3D = fieldStates[0] && fieldStates[1] && fieldStates[2];
-
-	LaserScan::Format format;
-	int outputNormalOffset = 0;
-	if(is3D)
-	{
-		if(hasNormals && hasIntensity)
-		{
-			format = LaserScan::kXYZINormal;
-			outputNormalOffset = 4;
-		}
-		else if(hasNormals && !hasIntensity && !hasRGB)
-		{
-			format = LaserScan::kXYZNormal;
-			outputNormalOffset = 3;
-		}
-		else if(hasNormals && hasRGB)
-		{
-			format = LaserScan::kXYZRGBNormal;
-			outputNormalOffset = 4;
-		}
-		else if(!hasNormals && hasIntensity)
-		{
-			format = LaserScan::kXYZI;
-		}
-		else if(!hasNormals && hasRGB)
-		{
-			format = LaserScan::kXYZRGB;
-		}
-		else
-		{
-			format = LaserScan::kXYZ;
-		}
-	}
-	else
-	{
-		if(hasNormals && hasIntensity)
-		{
-			format = LaserScan::kXYINormal;
-			outputNormalOffset = 3;
-		}
-		else if(hasNormals && !hasIntensity)
-		{
-			format = LaserScan::kXYNormal;
-			outputNormalOffset = 2;
-		}
-		else if(!hasNormals && hasIntensity)
-		{
-			format = LaserScan::kXYI;
-		}
-		else
-		{
-			format = LaserScan::kXY;
-		}
-	}
-
-	UASSERT(cloud.data.size()/cloud.point_step == (uint32_t)cloud.height*cloud.width);
-	cv::Mat laserScan = cv::Mat(1, (int)cloud.data.size()/cloud.point_step, CV_32FC(LaserScan::channels(format)));
-
-	bool transformValid = !transform.isNull() && !transform.isIdentity();
-	Transform transformRot;
-	if(transformValid)
-	{
-		transformRot = transform.rotation();
-	}
-	int oi=0;
-	for (uint32_t row = 0; row < (uint32_t)cloud.height; ++row)
-	{
-		const uint8_t* row_data = &cloud.data[row * cloud.row_step];
-		for (uint32_t col = 0; col < (uint32_t)cloud.width; ++col)
-		{
-			const uint8_t* msg_data = row_data + col * cloud.point_step;
-
-			float * ptr = laserScan.ptr<float>(0, oi);
-
-			bool valid = true;
-			if(laserScan.channels() == 2)
-			{
-				ptr[0] = *(float*)(msg_data + fieldOffsets[0]);
-				ptr[1] = *(float*)(msg_data + fieldOffsets[1]);
-				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]);
-			}
-			else if(laserScan.channels() == 3)
-			{
-				ptr[0] = *(float*)(msg_data + fieldOffsets[0]);
-				ptr[1] = *(float*)(msg_data + fieldOffsets[1]);
-				if(format == LaserScan::kXYI)
-				{
-					ptr[2] = *(float*)(msg_data + fieldOffsets[7]);
-				}
-				else // XYZ
-				{
-					ptr[2] = *(float*)(msg_data + fieldOffsets[2]);
-					valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]);
-				}
-			}
-			else if(laserScan.channels() == 4)
-			{
-				ptr[0] = *(float*)(msg_data + fieldOffsets[0]);
-				ptr[1] = *(float*)(msg_data + fieldOffsets[1]);
-				ptr[2] = *(float*)(msg_data + fieldOffsets[2]);
-				if(format == LaserScan::kXYZI)
-				{
-					ptr[3] = *(float*)(msg_data + fieldOffsets[7]);
-				}
-				else // XYZRGB
-				{
-#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-					std::uint8_t b=*(msg_data + fieldOffsets[6]);
-					std::uint8_t g=*(msg_data + fieldOffsets[6]+1);
-					std::uint8_t r=*(msg_data + fieldOffsets[6]+2);
-#else
-					pcl::uint8_t b=*(msg_data + fieldOffsets[6]);
-					pcl::uint8_t g=*(msg_data + fieldOffsets[6]+1);
-					pcl::uint8_t r=*(msg_data + fieldOffsets[6]+2);
-#endif
-					int * ptrInt = (int*)ptr;
-					ptrInt[3] = int(b) | (int(g) << 8) | (int(r) << 16);
-				}
-				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]);
-			}
-			else if(laserScan.channels() == 5)
-			{
-				ptr[0] = *(float*)(msg_data + fieldOffsets[0]);
-				ptr[1] = *(float*)(msg_data + fieldOffsets[1]);
-				ptr[2] = *(float*)(msg_data + fieldOffsets[3]);
-				ptr[3] = *(float*)(msg_data + fieldOffsets[4]);
-				ptr[4] = *(float*)(msg_data + fieldOffsets[5]);
-				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]) && uIsFinite(ptr[3]) && uIsFinite(ptr[4]);
-			}
-			else if(laserScan.channels() == 6)
-			{
-				ptr[0] = *(float*)(msg_data + fieldOffsets[0]);
-				ptr[1] = *(float*)(msg_data + fieldOffsets[1]);
-				if(format == LaserScan::kXYINormal)
-				{
-					ptr[2] = *(float*)(msg_data + fieldOffsets[7]);
-				}
-				else // XYZNormal
-				{
-					ptr[2] = *(float*)(msg_data + fieldOffsets[2]);
-				}
-				ptr[3] = *(float*)(msg_data + fieldOffsets[3]);
-				ptr[4] = *(float*)(msg_data + fieldOffsets[4]);
-				ptr[5] = *(float*)(msg_data + fieldOffsets[5]);
-				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]) && uIsFinite(ptr[3]) && uIsFinite(ptr[4]) &&  uIsFinite(ptr[5]);
-			}
-			else if(laserScan.channels() == 7)
-			{
-				ptr[0] = *(float*)(msg_data + fieldOffsets[0]);
-				ptr[1] = *(float*)(msg_data + fieldOffsets[1]);
-				ptr[2] = *(float*)(msg_data + fieldOffsets[2]);
-				if(format == LaserScan::kXYZINormal)
-				{
-					ptr[3] = *(float*)(msg_data + fieldOffsets[7]);
-				}
-				else // XYZRGBNormal
-				{
-#if PCL_VERSION_COMPARE(>=, 1, 10, 0)
-					std::uint8_t b=*(msg_data + fieldOffsets[6]);
-					std::uint8_t g=*(msg_data + fieldOffsets[6]+1);
-					std::uint8_t r=*(msg_data + fieldOffsets[6]+2);
-#else
-					pcl::uint8_t b=*(msg_data + fieldOffsets[6]);
-					pcl::uint8_t g=*(msg_data + fieldOffsets[6]+1);
-					pcl::uint8_t r=*(msg_data + fieldOffsets[6]+2);
-#endif
-					int * ptrInt = (int*)ptr;
-					ptrInt[3] = int(b) | (int(g) << 8) | (int(r) << 16);
-				}
-				ptr[4] = *(float*)(msg_data + fieldOffsets[3]);
-				ptr[5] = *(float*)(msg_data + fieldOffsets[4]);
-				ptr[6] = *(float*)(msg_data + fieldOffsets[5]);
-				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]) && uIsFinite(ptr[4]) && uIsFinite(ptr[5]) &&  uIsFinite(ptr[6]);
-			}
-			else
-			{
-				UFATAL("Cannot handle as many channels (%d)!", laserScan.channels());
-			}
-
-			if(!filterNaNs || valid)
-			{
-				if(valid && transformValid)
-				{
-					cv::Point3f pt = util3d::transformPoint(cv::Point3f(ptr[0], ptr[1], is3D?ptr[3]:0), transform);
-					ptr[0] = pt.x;
-					ptr[1] = pt.y;
-					if(is3D)
-					{
-						ptr[2] = pt.z;
-					}
-					if(hasNormals)
-					{
-						pt = util3d::transformPoint(cv::Point3f(ptr[outputNormalOffset], ptr[outputNormalOffset+1], ptr[outputNormalOffset+2]), transformRot);
-						ptr[outputNormalOffset] = pt.x;
-						ptr[outputNormalOffset+1] = pt.y;
-						ptr[outputNormalOffset+2] = pt.z;
-					}
-				}
-
-				++oi;
-			}
-		}
-	}
-	if(oi == 0)
-	{
-		return LaserScan();
-	}
-	return  LaserScan(laserScan(cv::Range::all(), cv::Range(0,oi)), 0, 0, format);
 }
 
 LaserScan laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform, bool filterNaNs)
@@ -3015,52 +2735,6 @@ cv::Mat projectCloudToCamera(
 	{
 		UERROR("field map pcl::pointXYZ not found!");
 	}
-/*
-	int count = 0;
-	for(int i=0; i<(int)laserScan->size(); ++i)
-	{
-		// Get 3D from laser scan
-		pcl::PointXYZ ptScan = laserScan->at(i);
-		ptScan = util3d::transformPoint(ptScan, t);
-
-		// re-project in camera frame
-		float z = ptScan.z;
-		bool set = false;
-		if(z > 0.0f)
-		{
-			float invZ = 1.0f/z;
-			float dx = (fx*ptScan.x)*invZ + cx;
-			float dy = (fy*ptScan.y)*invZ + cy;
-			int dx_low = dx;
-			int dy_low = dy;
-			int dx_high = dx + 0.5f;
-			int dy_high = dy + 0.5f;
-			if(uIsInBounds(dx_low, 0, registered.cols) && uIsInBounds(dy_low, 0, registered.rows))
-			{
-				set = true;
-				float &zReg = registered.at<float>(dy_low, dx_low);
-				if(zReg == 0 || z < zReg)
-				{
-					zReg = z;
-				}
-			}
-			if((dx_low != dx_high || dy_low != dy_high) &&
-				uIsInBounds(dx_high, 0, registered.cols) && uIsInBounds(dy_high, 0, registered.rows))
-			{
-				set = true;
-				float &zReg = registered.at<float>(dy_high, dx_high);
-				if(zReg == 0 || z < zReg)
-				{
-					zReg = z;
-				}
-			}
-		}
-		if(set)
-		{
-			count++;
-		}
-	}
-	*/
 	UDEBUG("Points in camera=%d/%d", count, (int)laserScan->data.size());
 
 	return registered;
@@ -3147,6 +2821,274 @@ void fillProjectedCloudHoles(cv::Mat & registeredDepth, bool verticalDirection, 
 			}
 		}
 	}
+}
+
+struct ProjectionInfo {
+	int nodeID;
+	int cameraIndex;
+	pcl::PointXY uv;
+	float distance;
+};
+
+/**
+ * For each point, return pixel of the best camera (NodeID->CameraIndex)
+ * looking at it based on the policy and parameters
+ */
+template<class PointT>
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCamerasImpl (
+		const typename pcl::PointCloud<PointT> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance,
+		float maxAngle,
+		const std::vector<float> & roiRatios,
+		bool distanceToCamPolicy,
+		const ProgressState * state)
+{
+	std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > pointToPixel;
+
+	if (cloud.empty() || cameraPoses.empty() || cameraModels.empty())
+		return pointToPixel;
+
+	std::string msg = uFormat("Computing visible points per cam (%d points, %d cams)", (int)cloud.size(), (int)cameraPoses.size());
+	UINFO(msg.c_str());
+	if(state && !state->callback(msg))
+	{
+		//cancelled!
+		UWARN("Projecting to cameras cancelled!");
+		return pointToPixel;
+	}
+
+	std::vector<std::vector<ProjectionInfo> > invertedIndex(cloud.size()); // For each point: list of cameras
+	int cameraProcessed = 0;
+	for(std::map<int, Transform>::const_iterator pter = cameraPoses.lower_bound(0); pter!=cameraPoses.end(); ++pter)
+	{
+		std::map<int, std::vector<CameraModel> >::const_iterator iter=cameraModels.begin();
+		if(iter!=cameraModels.end() && !iter->second.empty())
+		{
+			for(size_t i=0; i<iter->second.size(); ++i)
+			{
+				Transform cameraTransform = (pter->second * iter->second[i].localTransform());
+				UASSERT(!cameraTransform.isNull());
+				cv::Mat cameraMatrixK = iter->second[i].K();
+				UASSERT(cameraMatrixK.type() == CV_64FC1 && cameraMatrixK.cols == 3 && cameraMatrixK.cols == 3);
+				const cv::Size & imageSize = iter->second[i].imageSize();
+
+				float fx = cameraMatrixK.at<double>(0,0);
+				float fy = cameraMatrixK.at<double>(1,1);
+				float cx = cameraMatrixK.at<double>(0,2);
+				float cy = cameraMatrixK.at<double>(1,2);
+
+				// depth: 2 channels UINT: [depthMM, indexPt]
+				cv::Mat registered = cv::Mat::zeros(imageSize, CV_32SC2);
+				Transform t = cameraTransform.inverse();
+
+				cv::Rect roi(0,0,imageSize.width, imageSize.height);
+				if(roiRatios.size()==4)
+				{
+					roi = util2d::computeRoi(imageSize, roiRatios);
+				}
+
+				int count = 0;
+				for(size_t i=0; i<cloud.size(); ++i)
+				{
+					// Get 3D from laser scan
+					PointT ptScan = cloud.at(i);
+					ptScan = util3d::transformPoint(ptScan, t);
+
+					// re-project in camera frame
+					float z = ptScan.z;
+					bool set = false;
+					if(z > 0.0f)
+					{
+						float invZ = 1.0f/z;
+						float dx = (fx*ptScan.x)*invZ + cx;
+						float dy = (fy*ptScan.y)*invZ + cy;
+						int dx_low = dx;
+						int dy_low = dy;
+						int dx_high = dx + 0.5f;
+						int dy_high = dy + 0.5f;
+						int zMM = z * 1000;
+						if(uIsInBounds(dx_low, roi.x, roi.x+roi.width) && uIsInBounds(dy_low, roi.y, roi.y+roi.height))
+						{
+							set = true;
+							cv::Vec2i &zReg = registered.at<cv::Vec2i>(dy_low, dx_low);
+							if(zReg[0] == 0 || zMM < zReg[0])
+							{
+								zReg[0] = zMM;
+								zReg[1] = i;
+							}
+						}
+						if((dx_low != dx_high || dy_low != dy_high) &&
+							uIsInBounds(dx_high, roi.x, roi.x+roi.width) && uIsInBounds(dy_high, roi.y, roi.y+roi.height))
+						{
+							set = true;
+							cv::Vec2i &zReg = registered.at<cv::Vec2i>(dy_high, dx_high);
+							if(zReg[0] == 0 || zMM < zReg[0])
+							{
+								zReg[0] = zMM;
+								zReg[1] = i;
+							}
+						}
+					}
+					if(set)
+					{
+						count++;
+					}
+				}
+				if(count == 0)
+				{
+					registered = cv::Mat();
+					UINFO("No points projected in camera %d/%d", pter->first, i);
+				}
+				else
+				{
+					UDEBUG("%d points projected in camera %d/%d", count, pter->first, i);
+				}
+				for(int u=0; u<registered.cols; ++u)
+				{
+					for(int v=0; v<registered.rows; ++v)
+					{
+						cv::Vec2i &zReg = registered.at<cv::Vec2i>(v, u);
+						if(zReg[0] > 0)
+						{
+							ProjectionInfo info;
+							info.nodeID = pter->first;
+							info.cameraIndex = i;
+							info.uv.x = float(u)/float(imageSize.width);
+							info.uv.y = float(v)/float(imageSize.height);
+							info.distance = zReg[0]/1000.0f;
+							invertedIndex[zReg[1]].push_back(info);
+						}
+					}
+				}
+			}
+		}
+
+		msg = uFormat("Processed camera %d/%d", (int)cameraProcessed+1, (int)cameraPoses.size());
+		UINFO(msg.c_str());
+		if(state && !state->callback(msg))
+		{
+			//cancelled!
+			UWARN("Projecting to cameras cancelled!");
+			return pointToPixel;
+		}
+		++cameraProcessed;
+	}
+
+	msg = uFormat("Select best camera for %d points...", (int)cloud.size());
+	UINFO(msg.c_str());
+	if(state && !state->callback(msg))
+	{
+		//cancelled!
+		UWARN("Projecting to cameras cancelled!");
+		return pointToPixel;
+	}
+
+	pointToPixel.resize(invertedIndex.size());
+	int colorized = 0;
+
+	// For each point
+	for(size_t i=0; i<invertedIndex.size(); ++i)
+	{
+		if((i+1)%10000 == 0)
+		{
+			UDEBUG("Point %d/%d", i+1, (int)cloud.size());
+			if(state && !state->callback(uFormat("%d/%d points projected to cameras (out of %d points)", colorized, i+1, (int)cloud.size())))
+			{
+				//cancelled!
+				UWARN("Projecting to camera cancelled!");
+				pointToPixel.clear();
+				return pointToPixel;
+			}
+		}
+
+		const PointT & pt = cloud.at(i);
+		int nodeID = -1;
+		int cameraIndex = -1;
+		float smallestWeight = std::numeric_limits<float>::max();
+		pcl::PointXY uv_coords;
+		for (size_t j = 0; j<invertedIndex[i].size(); ++j)
+		{
+			const Transform & cam = cameraPoses.at(invertedIndex[i][j].nodeID);
+			Eigen::Vector4f camDir(cam.x()-pt.x, cam.y()-pt.y, cam.z()-pt.z, 0);
+			Eigen::Vector4f normal(pt.normal_x, pt.normal_y, pt.normal_z, 0);
+			float angleToCam = maxAngle<=0?0:pcl::getAngle3D(normal, camDir);
+			float distanceToCam = invertedIndex[i][j].distance;
+			if( (maxAngle<=0 || (camDir.dot(normal) > 0 && angleToCam < maxAngle)) && // is facing camera? is point normal perpendicular to camera?
+				(maxDistance<=0 || distanceToCam<maxDistance)) // is point not too far from camera?
+			{
+				float vx = invertedIndex[i][j].uv.x-0.5f;
+				float vy = invertedIndex[i][j].uv.y-0.5f;
+
+				float distanceToCenter = vx*vx+vy*vy;
+				float distance = distanceToCenter;
+				if(distanceToCamPolicy)
+				{
+					distance = distanceToCam;
+				}
+				if(distance <= smallestWeight)
+				{
+					nodeID = invertedIndex[i][j].nodeID;
+					cameraIndex = invertedIndex[i][j].cameraIndex;
+					smallestWeight = distance;
+					uv_coords = invertedIndex[i][j].uv;
+				}
+			}
+		}
+
+		if(nodeID>-1 && cameraIndex> -1)
+		{
+			pointToPixel[i].first.first = nodeID;
+			pointToPixel[i].first.second = cameraIndex;
+			pointToPixel[i].second = uv_coords;
+			++colorized;
+		}
+	}
+
+	UINFO("Process %d points...done! (%d [%d%%] projected in cameras)", (int)cloud.size(), colorized, colorized*100/cloud.size());
+
+	return pointToPixel;
+}
+
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCameras (
+		const typename pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance,
+		float maxAngle,
+		const std::vector<float> & roiRatios,
+		bool distanceToCamPolicy,
+		const ProgressState * state)
+{
+	return projectCloudToCamerasImpl(cloud,
+			cameraPoses,
+			cameraModels,
+			maxDistance,
+			maxAngle,
+			roiRatios,
+			distanceToCamPolicy,
+			state);
+}
+
+std::vector<std::pair< std::pair<int, int>, pcl::PointXY> > projectCloudToCameras (
+		const typename pcl::PointCloud<pcl::PointXYZINormal> & cloud,
+		const std::map<int, Transform> & cameraPoses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance,
+		float maxAngle,
+		const std::vector<float> & roiRatios,
+		bool distanceToCamPolicy,
+		const ProgressState * state)
+{
+	return projectCloudToCamerasImpl(cloud,
+			cameraPoses,
+			cameraModels,
+			maxDistance,
+			maxAngle,
+			roiRatios,
+			distanceToCamPolicy,
+			state);
 }
 
 bool isFinite(const cv::Point3f & pt)

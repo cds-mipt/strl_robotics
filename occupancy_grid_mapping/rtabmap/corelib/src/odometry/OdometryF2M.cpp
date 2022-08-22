@@ -73,7 +73,6 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	map_(new Signature(-1)),
 	lastFrame_(new Signature(1)),
 	lastFrameOldestNewId_(0),
-	initGravity_(false),
 	bundleSeq_(0),
 	sba_(0)
 {
@@ -181,27 +180,19 @@ OdometryF2M::~OdometryF2M()
 void OdometryF2M::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
-	if(!initGravity_)
-	{
-		UDEBUG("initialPose=%s", initialPose.prettyPrint().c_str());
-		Odometry::reset(initialPose);
-		*lastFrame_ = Signature(1);
-		*map_ = Signature(-1);
-		scansBuffer_.clear();
-		bundleWordReferences_.clear();
-		bundlePoses_.clear();
-		bundleLinks_.clear();
-		bundleModels_.clear();
-		bundlePoseReferences_.clear();
-		bundleSeq_ = 0;
-		lastFrameOldestNewId_ = 0;
-	}
-	initGravity_ = false;
-}
 
-bool OdometryF2M::canProcessIMU() const
-{
-	return sba_ && sba_->gravitySigma() > 0.0f;
+	UDEBUG("initialPose=%s", initialPose.prettyPrint().c_str());
+	Odometry::reset(initialPose);
+	*lastFrame_ = Signature(1);
+	*map_ = Signature(-1);
+	scansBuffer_.clear();
+	bundleWordReferences_.clear();
+	bundlePoses_.clear();
+	bundleLinks_.clear();
+	bundleModels_.clear();
+	bundlePoseReferences_.clear();
+	bundleSeq_ = 0;
+	lastFrameOldestNewId_ = 0;
 }
 
 // return not null transform if odometry is correctly computed
@@ -220,33 +211,9 @@ Transform OdometryF2M::computeTransform(
 	}
 
 	Transform imuT;
-	if(sba_ && sba_->gravitySigma() > 0.0f && !data.imu().empty())
+	if(sba_ && sba_->gravitySigma() > 0.0f && !imus().empty())
 	{
-		if(imus().empty())
-		{
-			UERROR("IMU received doesn't have orientation set, it is ignored. If you are using RTAB-Map standalone, enable IMU filtering in Preferences->Source panel. On ROS, use \"imu_filter_madgwick\" or \"imu_complementary_filter\" packages to compute the orientation.");
-		}
-		else
-		{
-			imuT = Transform::getTransform(imus(), data.stamp());
-			if(this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f)
-			{
-				if(!imuT.isNull())
-				{
-					Eigen::Quaterniond imuQuat = imuT.getQuaterniond();
-					Transform previous = this->getPose();
-					Transform newFramePose = Transform(previous.x(), previous.y(), previous.z(), imuQuat.x(), imuQuat.y(), imuQuat.z(), imuQuat.w());
-					UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), newFramePose.prettyPrint().c_str());
-					initGravity_ = true;
-					this->reset(newFramePose);
-				}
-			}
-		}
-
-		if(data.imageRaw().empty() && data.laserScanRaw().isEmpty())
-		{
-			return output;
-		}
+		imuT = Transform::getTransform(imus(), data.stamp());
 	}
 
 	RegistrationInfo regInfo;
@@ -301,7 +268,7 @@ Transform OdometryF2M::computeTransform(
 				bundleModels.clear();
 
 				float maxCorrespondenceDistance = 0.0f;
-				float pmOutlierRatio = 0.0f;
+				float outlierRatio = 0.0f;
 				if(guess.isNull() &&
 					!regPipeline_->isImageRequired() &&
 					regPipeline_->isScanRequired() &&
@@ -309,12 +276,12 @@ Transform OdometryF2M::computeTransform(
 				{
 					// only on initialization (first frame to register), increase icp max correspondences in case the robot is already moving
 					maxCorrespondenceDistance = Parameters::defaultIcpMaxCorrespondenceDistance();
-					pmOutlierRatio = Parameters::defaultIcpPMOutlierRatio();
+					outlierRatio = Parameters::defaultIcpOutlierRatio();
 					Parameters::parse(parameters_, Parameters::kIcpMaxCorrespondenceDistance(), maxCorrespondenceDistance);
-					Parameters::parse(parameters_, Parameters::kIcpPMOutlierRatio(), pmOutlierRatio);
+					Parameters::parse(parameters_, Parameters::kIcpOutlierRatio(), outlierRatio);
 					ParametersMap params;
 					params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance*3.0f)));
-					params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(0.95f)));
+					params.insert(ParametersPair(Parameters::kIcpOutlierRatio(), uNumber2Str(0.95f)));
 					regPipeline_->parseParameters(params);
 				}
 
@@ -335,11 +302,12 @@ Transform OdometryF2M::computeTransform(
 					// set it back
 					ParametersMap params;
 					params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance)));
-					params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(pmOutlierRatio)));
+					params.insert(ParametersPair(Parameters::kIcpOutlierRatio(), uNumber2Str(outlierRatio)));
 					regPipeline_->parseParameters(params);
 				}
 
 				data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().keypoints3D(), lastFrame_->sensorData().descriptors());
+				data.setLaserScan(lastFrame_->sensorData().laserScanRaw());
 
 				UDEBUG("Registration time = %fs", regInfo.totalTime);
 				if(!transform.isNull())
@@ -983,7 +951,7 @@ Transform OdometryF2M::computeTransform(
 						}
 						else
 						{
-							newPoints = mapCloudNormals->size();
+							newPoints = frameCloudNormals->size();
 						}
 
 						if(newPoints)
@@ -1093,12 +1061,12 @@ Transform OdometryF2M::computeTransform(
 							if(mapScan.is2d())
 							{
 								Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
-								mapScan = LaserScan(util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYINormal);
+								mapScan = LaserScan(util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f);
 							}
 							else
 							{
 								Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(), -newFramePose.z(),0,0,0);
-								mapScan = LaserScan(util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYZINormal);
+								mapScan = LaserScan(util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f);
 							}
 							modified=true;
 						}
@@ -1157,16 +1125,18 @@ Transform OdometryF2M::computeTransform(
 		}
 		else
 		{
-			// just generate keypoints for the new signature
-			if(regPipeline_->isImageRequired())
-			{
-				Signature dummy;
-				regPipeline_->computeTransformationMod(
-						*lastFrame_,
-						dummy);
-			}
+			// Just generate keypoints for the new signature
+			// For scan, we want to use reading filters, so set dummy's scan and set back to reference afterwards
+			Signature dummy;
+			dummy.sensorData().setLaserScan(lastFrame_->sensorData().laserScanRaw());
+			lastFrame_->sensorData().setLaserScan(LaserScan());
+			regPipeline_->computeTransformationMod(
+					*lastFrame_,
+					dummy);
+			lastFrame_->sensorData().setLaserScan(dummy.sensorData().laserScanRaw());
 
 			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().keypoints3D(), lastFrame_->sensorData().descriptors());
+			data.setLaserScan(lastFrame_->sensorData().laserScanRaw());
 
 			// a very high variance tells that the new pose is not linked with the previous one
 			regInfo.covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0;
@@ -1360,7 +1330,6 @@ Transform OdometryF2M::computeTransform(
 											util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint),
 											0,
 											0.0f,
-											LaserScan::kXYINormal,
 											Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,0)));
 						}
 						else
@@ -1371,7 +1340,6 @@ Transform OdometryF2M::computeTransform(
 											util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint),
 											0,
 											0.0f,
-											LaserScan::kXYZINormal,
 											newFramePose.translation()));
 						}
 

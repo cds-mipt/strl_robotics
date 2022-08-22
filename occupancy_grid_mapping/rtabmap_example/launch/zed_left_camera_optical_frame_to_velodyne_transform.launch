@@ -1,0 +1,9 @@
+<launch>
+
+    <node if="$(arg pub_lidar_tf)" pkg="tf2_ros" type="static_transform_publisher" name="zed_left_camera_optical_frame_to_velodyne_transform"
+        args="4.632155672047202216e-02 -1.327858803524132048e-01 -6.092748914769485769e-02
+              -2.109805266472031704e+00 -1.588226287078796428e+00 -2.618237322666464806e+00
+              zed_left_camera_optical_frame velodyne"/>
+        
+</launch>
+

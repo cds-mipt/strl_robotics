@@ -33,9 +33,11 @@ SET(SRC_FILES
     camera/CameraStereoImages.cpp
     camera/CameraStereoVideo.cpp
     camera/CameraStereoZed.cpp
+    camera/CameraStereoZedOC.cpp
     camera/CameraStereoTara.cpp
     camera/CameraVideo.cpp
     camera/CameraMyntEye.cpp
+    camera/CameraDepthAI.cpp
     
     EpipolarGeometry.cpp
     VisualWord.cpp
@@ -85,11 +87,13 @@ SET(SRC_FILES
     odometry/OdometryViso2.cpp
     odometry/OdometryDVO.cpp
     odometry/OdometryOkvis.cpp
-    odometry/OdometryORBSLAM2.cpp
+    odometry/OdometryORBSLAM.cpp
     odometry/OdometryLOAM.cpp
     odometry/OdometryMSCKF.cpp
     odometry/OdometryVINS.cpp
+    odometry/OdometryOpenVINS.cpp
     
+    IMU.cpp
     IMUThread.cpp
     IMUFilter.cpp
     imufilter/ComplementaryFilter.cpp
@@ -337,6 +341,21 @@ IF(mynteye_FOUND)
 	)
 ENDIF(mynteye_FOUND)
 
+IF(depthai_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		depthai::core
+		depthai::opencv
+	)
+ENDIF(depthai_FOUND)
+
+IF(TARGET OpenMP::OpenMP_CXX)
+	SET(LIBRARIES
+		${LIBRARIES}
+		OpenMP::OpenMP_CXX
+	)
+ENDIF(TARGET OpenMP::OpenMP_CXX)
+
 IF(WITH_TORO)
 	SET(SRC_FILES
     	${SRC_FILES}
@@ -350,14 +369,29 @@ IF(WITH_TORO)
 ENDIF(WITH_TORO)
 
 IF(G2O_FOUND)
-	SET(INCLUDE_DIRS 
+	IF(g2o_FOUND)
+	  SET(LIBRARIES
+             ${LIBRARIES}
+	     g2o::core
+	     g2o::solver_cholmod
+	     g2o::solver_eigen
+	     g2o::solver_pcg
+	     g2o::solver_csparse
+	     g2o::csparse_extension
+	     g2o::types_slam2d
+	     g2o::types_slam3d
+	     g2o::types_sba
+	  )
+	ELSE()
+	  SET(INCLUDE_DIRS 
 		${INCLUDE_DIRS} 
 		${G2O_INCLUDE_DIRS}
-	)
-	SET(LIBRARIES
+	  )
+	  SET(LIBRARIES
 		${LIBRARIES}
 		${G2O_LIBRARIES}
-	)
+	  )
+	ENDIF()
 	SET(SRC_FILES
     		${SRC_FILES}
 		optimizer/g2o/edge_se3_xyzprior.cpp
@@ -406,6 +440,13 @@ IF(libpointmatcher_FOUND)
 		${libpointmatcher_LIBRARIES}
 	)
 ENDIF(libpointmatcher_FOUND)
+
+IF(CCCoreLib_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		CCCoreLib::CCCoreLib
+	)
+ENDIF(CCCoreLib_FOUND)
 
 IF(FastCV_FOUND)
 	SET(INCLUDE_DIRS 
@@ -468,6 +509,19 @@ IF(ZED_FOUND)
 		)
 	ENDIF(CUDA_FOUND)
 ENDIF(ZED_FOUND)
+
+IF(ZEDOC_FOUND)
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${ZEDOC_INCLUDE_DIRS}
+		${HIDAPI_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${ZEDOC_LIBRARIES}
+		${HIDAPI_LIBRARIES}
+	)
+ENDIF(ZEDOC_FOUND)
 
 IF(octomap_FOUND)
     SET(INCLUDE_DIRS
@@ -563,16 +617,27 @@ IF(vins_FOUND)
 	)
 ENDIF(vins_FOUND)
 
-IF(ORB_SLAM2_FOUND)
+IF(ov_msckf_FOUND)
     SET(INCLUDE_DIRS
-        ${ORB_SLAM2_INCLUDE_DIRS} #before so that g2o includes are taken from ORB_SLAM2 directory before the official g2o one
+		${ov_msckf_INCLUDE_DIRS}
 		${INCLUDE_DIRS}
 	)
 	SET(LIBRARIES
-	    ${ORB_SLAM2_LIBRARIES}
+		${ov_msckf_LIBRARIES}
 		${LIBRARIES}
 	)
-ENDIF(ORB_SLAM2_FOUND)
+ENDIF(ov_msckf_FOUND)
+
+IF(ORB_SLAM_FOUND)
+    SET(INCLUDE_DIRS
+        ${ORB_SLAM_INCLUDE_DIRS} #before so that g2o includes are taken from ORB_SLAM directory before the official g2o one
+		${INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+	    ${ORB_SLAM_LIBRARIES}
+		${LIBRARIES}
+	)
+ENDIF(ORB_SLAM_FOUND)
 
 IF(GTSAM_FOUND)
 	# Make sure GTSAM is built with system Eigen, not the included one in its package

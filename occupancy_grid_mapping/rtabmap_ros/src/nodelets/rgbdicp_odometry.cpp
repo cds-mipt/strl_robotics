@@ -343,6 +343,10 @@ private:
 				}
 				else if(cloudMsg.get() != 0)
 				{
+					UASSERT_MSG(cloudMsg->data.size() == cloudMsg->row_step*cloudMsg->height,
+							uFormat("data=%d row_step=%d height=%d", cloudMsg->data.size(), cloudMsg->row_step, cloudMsg->height).c_str());
+
+
 					bool containNormals = false;
 					if(scanVoxelSize_ == 0.0f)
 					{
@@ -418,7 +422,10 @@ private:
 						0,
 						rtabmap_ros::timestampFromROS(stamp));
 
-				this->processData(data, stamp, image->header.frame_id);
+				std_msgs::Header header;
+				header.stamp = stamp;
+				header.frame_id = image->header.frame_id;
+				this->processData(data, header);
 			}
 		}
 	}

@@ -261,6 +261,7 @@ void occupancy2DFromGroundObstacles(
 		cv::Mat & obstacles,
 		float cellSize)
 {
+	constexpr bool hasRGB = std::is_same<PointT, pcl::PointXYZRGB>() || std::is_same<PointT, pcl::PointXYZRGBNormal>();
 	ground = cv::Mat();
 	if(groundCloud->size())
 	{
@@ -269,13 +270,25 @@ void occupancy2DFromGroundObstacles(
 		groundCloudProjected = util3d::projectCloudOnXYPlane(*groundCloud);
 		//voxelize to grid cell size
 		groundCloudProjected = util3d::voxelize(groundCloudProjected, cellSize);
-
-		ground = cv::Mat(1, (int)groundCloudProjected->size(), CV_32FC2);
+		int type = CV_32FC2;
+		if constexpr(hasRGB)
+		{
+			type = CV_32FC3;
+		}
+		ground = cv::Mat(1, (int)groundCloudProjected->size(), type);
 		for(unsigned int i=0;i<groundCloudProjected->size(); ++i)
 		{
-			cv::Vec2f * ptr = ground.ptr<cv::Vec2f>();
-			ptr[i][0] = groundCloudProjected->at(i).x;
-			ptr[i][1] = groundCloudProjected->at(i).y;
+			float* ptr = ground.ptr<float>(0, i);
+			ptr[0] = groundCloudProjected->at(i).x;
+			ptr[1] = groundCloudProjected->at(i).y;
+			if constexpr(hasRGB)
+			{
+				std::uint8_t r = groundCloudProjected->at(i).r;
+				std::uint8_t g = groundCloudProjected->at(i).g;
+				std::uint8_t b = groundCloudProjected->at(i).b;
+				int* ptrInt = (int*)ptr;
+				ptrInt[2] = int(b) | (int(g) << 8) | (int(r) << 16);
+			}
 		}
 	}
 
@@ -287,13 +300,25 @@ void occupancy2DFromGroundObstacles(
 		obstaclesCloudProjected = util3d::projectCloudOnXYPlane(*obstaclesCloud);
 		//voxelize to grid cell size
 		obstaclesCloudProjected = util3d::voxelize(obstaclesCloudProjected, cellSize);
-
-		obstacles = cv::Mat(1, (int)obstaclesCloudProjected->size(), CV_32FC2);
+		int type = CV_32FC2;
+		if constexpr(hasRGB)
+		{
+			type = CV_32FC3;
+		}
+		obstacles = cv::Mat(1, (int)obstaclesCloudProjected->size(), type);
 		for(unsigned int i=0;i<obstaclesCloudProjected->size(); ++i)
 		{
-			cv::Vec2f * ptr = obstacles.ptr<cv::Vec2f>();
-			ptr[i][0] = obstaclesCloudProjected->at(i).x;
-			ptr[i][1] = obstaclesCloudProjected->at(i).y;
+			float* ptr = obstacles.ptr<float>(0, i);
+			ptr[0] = obstaclesCloudProjected->at(i).x;
+			ptr[1] = obstaclesCloudProjected->at(i).y;
+			if constexpr(hasRGB)
+			{
+				std::uint8_t r = obstaclesCloudProjected->at(i).r;
+				std::uint8_t g = obstaclesCloudProjected->at(i).g;
+				std::uint8_t b = obstaclesCloudProjected->at(i).b;
+				int* ptrInt = (int*)ptr;
+				ptrInt[2] = int(b) | (int(g) << 8) | (int(r) << 16);
+			}
 		}
 	}
 }

@@ -1,0 +1,10 @@
+<library path="lib/libcolored_occupancy_grid_rviz_plugin">
+  <class name="colored_occupancy_grid/ColoredOccupancyGrid"
+         type="colored_occupancy_grid::ColoredOccupancyGridDisplay"
+         base_class_type="rviz::Display">
+    <description>
+      Displays color on occupancy grid.
+    </description>
+    <message_type>colored_occupancy_grid/ColoredOccupancyGrid</message_type>
+  </class>
+</library>
