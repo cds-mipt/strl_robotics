@@ -1,0 +1,26 @@
+<launch>
+    <!-- <include file="$(find manipulator)/launch/press_button.launch" /> -->
+    <!-- <include file="$(find rtabmap_example)/launch/occupancy_grid_builder.launch" /> -->
+    <arg name = "ctrl_path_topic" value="/trajectory_from_proxy"/>
+
+    <group >
+        <include file="$(find planner_cds)/launch/husky_move.launch" />
+    </group>
+
+    <group > 
+        
+        <include file="$(find newcontrol)/launch/control_real.launch" >
+            <arg name="method" value="3" />
+        </include>
+        
+        <rosparam param = "path_topic" subst_value="True">$(arg ctrl_path_topic)</rosparam>
+        
+    </group>
+
+    <group ns="lift">
+        <rosparam command="load" file="$(find lift_tactical_node)/config/node_config.yaml"/>
+        <rosparam param = "send_path_to_topic" subst_value="True">$(arg ctrl_path_topic)</rosparam>
+        <node name="tactical_node"  pkg="lift_tactical_node" type="tactical_node.py" output="screen">
+        </node>
+    </group>
+</launch>

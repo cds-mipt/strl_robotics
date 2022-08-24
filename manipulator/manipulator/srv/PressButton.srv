@@ -1,0 +1,7 @@
+float32 zmin
+float32 zmax
+float32 base_joint
+bool end_operate
+---
+bool result
+geometry_msgs/Pose button

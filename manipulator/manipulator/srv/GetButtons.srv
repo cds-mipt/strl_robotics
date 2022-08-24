@@ -1,0 +1,3 @@
+int8 count
+---
+geometry_msgs/Pose pose

@@ -1,0 +1,7 @@
+{
+  node_name: "tactical_node",
+  path_topic: "/trajectory",
+  send_path_to_topic: "/trajectory_from_proxy",
+  status_topic: "/control_status",
+  press_srv_name: "/press_button"
+}

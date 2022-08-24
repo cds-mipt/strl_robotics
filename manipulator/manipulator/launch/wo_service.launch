@@ -1,0 +1,8 @@
+<launch>
+    <arg name="solo_path" default="$(optenv HOME)/Repos/solov2_pytorch1.7/"/>
+    <node name="solo" output="screen" pkg = "manipulator" type="launch_solo.sh"/>
+    <node pkg="manipulator" output="screen"  type="press_realsense_rtde.py" name="press_button_server">
+        
+    </node> 
+    
+</launch>
