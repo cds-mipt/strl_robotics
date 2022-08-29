@@ -5,13 +5,12 @@
 
     <!-- Настройка топиков -->
     <arg name="namespace" default="/visual_pr" />
-    <arg name="camera_ns" default="/zed_node" />
-    <arg name="image_topic" default="/left/image_rect_color/compressed" />
+    <arg name="image_topic" default="/pr_query_image/compressed" />
     <arg name="pose_topic" default="/estimated_pose" />
 
     <!-- Nodes -->
     <group ns="$(arg namespace)">
-        <remap from="image" to="$(arg camera_ns)$(arg image_topic)" />
+        <remap from="image" to="$(arg image_topic)" />
         <remap from="estimated_pose" to="$(arg namespace)$(arg pose_topic)" />
 
         <node pkg="place_recognition" type="visual_pr_node.py" name="visual_pr_node" output="screen">
